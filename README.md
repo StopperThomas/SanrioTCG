@@ -76,7 +76,7 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
 ![Home Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/home_screen_mockup.png)
 
 ### 2. Card Collection Screen
-![Card Collection Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/albums_screen_mockup.png)
+![Card Collection Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/card_collection_mockup.png)
 
 ### 3. Albums Screen
 ![Albums Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/albums_screen_mockup.png)
@@ -84,7 +84,7 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
 ### 4. Card Shop Screen
 ![Card Shop Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/card_shop_mockup.png)
 
-### 4. Info / Help Screen
+### 5. Info / Help Screen
 ![Info / Help Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/info_mockup.png)
 
 
