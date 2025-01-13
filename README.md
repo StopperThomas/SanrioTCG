@@ -5,6 +5,12 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
 
 ---
 
+## Team Members
+- **Thomas Stopper, cc231012**  
+- **Leonie Kozak, cc231010**
+
+---
+
 ## App Concept
 
 ### Use Case
@@ -93,3 +99,4 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
 ## Tools
 - **Mockup Tools**: Figma for wireframes and PowerPoint for presentation.
 - **User Flow**: Figma.
+- **Code**: Android Studio.
