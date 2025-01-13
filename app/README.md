@@ -49,26 +49,26 @@ The app is designed for casual collectors and Sanrio fans who enjoy creating and
 ---
 
 ## User Flow
-![User Flow](images/user_flow.png)
+![User Flow](src/main/java/at/ac/fhstp/sanriotcg/images/user_flow.png)
 
 ---
 
 ## Mockups
 
 ### 1. Home Screen
-![Home Screen Mockup](images/home_screen_mockup.png)
+![Home Screen Mockup](src/main/java/at/ac/fhstp/sanriotcg/images/home_screen_mockup.png)
 
 ### 2. Card Collection Screen
-![Card Collection Screen Mockup](images/card_collection_mockup.png)
+![Card Collection Screen Mockup](src/main/java/at/ac/fhstp/sanriotcg/images/card_collection_mockup.png)
 
 ### 3. Albums Screen
-![Albums Screen Mockup](images/albums_screen_mockup.png)
+![Albums Screen Mockup](src/main/java/at/ac/fhstp/sanriotcg/images/albums_screen_mockup.png)
 
 ### 4. Card Shop Screen
-![Card Shop Screen Mockup](images/card_shop_mockup.png)
+![Card Shop Screen Mockup](src/main/java/at/ac/fhstp/sanriotcg/images/card_shop_mockup.png)
 
 ### 4. Info / Help Screen
-![Info / Help Screen Mockup](images/info_mockup.png)
+![Info / Help Screen Mockup](src/main/java/at/ac/fhstp/sanriotcg/images/info_mockup.png)
 
 
 ---
