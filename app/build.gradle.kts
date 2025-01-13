@@ -1,16 +1,17 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    kotlin("kapt")
 }
 
 android {
     namespace = "at.ac.fhstp.sanriotcg"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "at.ac.fhstp.sanriotcg"
         minSdk = 27
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -47,27 +48,34 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    kapt {
+        correctErrorTypes = true
+    }
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.navigation.runtime.ktx)
-    implementation(libs.androidx.navigation.compose)
+    kapt(libs.androidx.room.compiler)
+    implementation(libs.androidx.recyclerview)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.androidx.compose.material.icons.extended)
 }
