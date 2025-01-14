@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import at.ac.fhstp.sanriotcg.model.Card
 
-@Database(entities = [Card::class], version = 1, exportSchema = false)
+@Database(entities = [Card::class], version = 2, exportSchema = false)
 abstract class CardDatabase : RoomDatabase() {
 
     abstract fun cardDao(): CardDao
@@ -22,11 +22,11 @@ abstract class CardDatabase : RoomDatabase() {
                     CardDatabase::class.java,
                     "card_database"
                 )
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
             }
         }
-
     }
 }

@@ -10,6 +10,9 @@ interface CardDao {
     @Query("SELECT * FROM card_table")
     fun getAllCards(): Flow<List<Card>>
 
+    @Query("SELECT * FROM card_table WHERE id = :id LIMIT 1")
+    fun getCardById(id: Int): Card
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(card: Card)
 

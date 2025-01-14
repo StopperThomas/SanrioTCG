@@ -39,9 +39,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,20 +58,32 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import at.ac.fhstp.sanriotcg.data.CardDatabase
+import at.ac.fhstp.sanriotcg.model.Card
+import at.ac.fhstp.sanriotcg.repository.CardRepository
 import at.ac.fhstp.sanriotcg.ui.theme.SanrioTCGTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private lateinit var cardRepository: CardRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize the database and repository
+        val database = CardDatabase.getDatabase(this) // `this` is the context
+        cardRepository = CardRepository(database.cardDao())
+
         setContent {
             SanrioTCGTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    CardApp()
+                    CardApp(cardRepository) // Pass the repository to your composable
                 }
             }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,14 +141,11 @@ fun AppFooter(navController: NavHostController) {
 }
 
 @Composable
-fun CardApp() {
+fun CardApp(cardRepository: CardRepository) {
     val navController = rememberNavController()
-
-    // Move the coin balance state here
-    var coinBalance by remember { mutableStateOf(500) }
-
-    // State for collected cards (using a Set to avoid duplicates)
-    var collectedCards by remember { mutableStateOf(setOf<Int>()) }
+    val collectedCards by cardRepository.allCards.collectAsState(initial = emptyList())
+    var coinBalance by remember { mutableIntStateOf(500) }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = { AppHeader() },
@@ -141,32 +154,40 @@ fun CardApp() {
         Box(modifier = Modifier.padding(paddingValues)) {
             NavHost(navController = navController, startDestination = "home") {
                 composable("home") { HomePage() }
-                composable("collection") { CollectionPage(navController, collectedCards) }
+                composable("collection") {
+                    CollectionPage(navController, collectedCards)
+                }
                 composable("album") { AlbumPage() }
                 composable("shop") {
-                    // Pass coinBalance and a function to update it to the ShopPage
-                    ShopPage(navController, coinBalance, onCoinBalanceChange = { newBalance ->
-                        coinBalance = newBalance
-                    })
+                    ShopPage(
+                        navController,
+                        coinBalance,
+                        onCoinBalanceChange = { newBalance -> coinBalance = newBalance },
+                        onCardsAdded = { newCards ->
+                            coroutineScope.launch {
+                                newCards.forEach { card ->
+                                    cardRepository.insert(card)
+                                }
+                            }
+                        }
+                    )
                 }
                 composable("info") { InfoPage() }
                 composable("fullScreenCard/{cardId}") { backStackEntry ->
-                    val cardId = backStackEntry.arguments?.getString("cardId")?.toInt() ?: R.drawable.cinnamoroll
-                    FullScreenCardPage(cardId, navController)
+                    val cardId = backStackEntry.arguments?.getString("cardId")?.toInt() ?: 0
+                    FullScreenCardPage(cardId, navController, cardRepository, onSell = {
+                        coinBalance += 50
+                    })
                 }
                 composable("packOpening/{cardIds}") { backStackEntry ->
                     val cardIdsString = backStackEntry.arguments?.getString("cardIds")
                     val cardIds = cardIdsString?.split(",")?.map { it.toInt() } ?: emptyList()
-                    PackOpeningScreen(cardIds, navController, onCardsRevealed = { newCards ->
-                        collectedCards = collectedCards + newCards // Add new cards to the set
-                    })
+                    PackOpeningScreen(cardIds, navController)
                 }
             }
         }
     }
 }
-
-
 
 @Composable
 fun HomePage() {
@@ -188,7 +209,7 @@ fun HomePage() {
 }
 
 @Composable
-fun CollectionPage(navController: NavHostController, collectedCards: Set<Int>) {
+fun CollectionPage(navController: NavHostController, collectedCards: List<Card>) {
     val maxCards = 10
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -212,25 +233,23 @@ fun CollectionPage(navController: NavHostController, collectedCards: Set<Int>) {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Scrollable grid of collected cards
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(8.dp)
         ) {
-            items(collectedCards.toList()) { cardId -> // Convert the set to a list
+            items(collectedCards) { card ->
                 Card(
                     modifier = Modifier
                         .padding(8.dp)
                         .fillMaxWidth()
                         .clickable {
-                            // Navigate to full-screen card page
-                            navController.navigate("fullScreenCard/$cardId")
+                            navController.navigate("fullScreenCard/${card.id}")
                         },
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFEEEEEE))
                 ) {
                     Image(
-                        painter = painterResource(id = cardId),
+                        painter = painterResource(id = card.drawableRes),
                         contentDescription = "Card Image",
                         modifier = Modifier
                             .fillMaxWidth()
@@ -242,26 +261,67 @@ fun CollectionPage(navController: NavHostController, collectedCards: Set<Int>) {
     }
 }
 
-
-
-
-
 @Composable
-fun FullScreenCardPage(cardId: Int, navController: NavHostController) {
+fun FullScreenCardPage(
+    cardId: Int,
+    navController: NavHostController,
+    cardRepository: CardRepository,
+    onSell: () -> Unit
+) {
+    var card by remember { mutableStateOf<Card?>(null) }
+
+    LaunchedEffect(cardId) {
+        card = cardRepository.getCardById(cardId)
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clickable { navController.popBackStack() }, // Close on tap outside the image
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Image(
-            painter = painterResource(id = cardId),
-            contentDescription = "Full Screen Card",
-            modifier = Modifier.fillMaxSize()
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            card.let {
+                if (it != null) {
+                    Image(
+                        painter = painterResource(id = it.drawableRes),
+                        contentDescription = "Full Screen Card",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row {
+                    Text(
+                        text = "Sell for 50 Coins",
+                        color = Color(0xFF1976D2),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier
+                            .clickable {
+                                coroutineScope.launch {
+                                    if (it != null) {
+                                        cardRepository.delete(it)
+                                    }
+                                    onSell()
+                                    navController.popBackStack()
+                                }
+                            }
+                            .padding(8.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Back",
+                        color = Color.Gray,
+                        modifier = Modifier
+                            .clickable { navController.popBackStack() }
+                            .padding(8.dp)
+                    )
+                }
+            }
+        }
     }
 }
-
 
 @Composable
 fun AlbumPage() {
@@ -286,43 +346,46 @@ fun AlbumPage() {
 fun ShopPage(
     navController: NavHostController,
     coinBalance: Int,
-    onCoinBalanceChange: (Int) -> Unit // Callback to update the coin balance
+    onCoinBalanceChange: (Int) -> Unit,
+    onCardsAdded: (List<Card>) -> Unit
 ) {
     var showErrorMessage by remember { mutableStateOf(false) }
 
     val packPrice = 100
 
     val cardsWithRarity = listOf(
-        at.ac.fhstp.sanriotcg.model.Card(
+        Card(
+            id = 1,
             drawableRes = R.drawable.cinnamoroll,
             rarity = 0.5f,
             name = "Cinnamoroll"
         ),
-        at.ac.fhstp.sanriotcg.model.Card(
+        Card(
+            id = 2,
             drawableRes = R.drawable.pompompudding,
             rarity = 0.5f,
             name = "Pompompudding"
         ),
     )
 
-    fun getRandomCard(): Int {
+    fun getRandomCard(): Card {
         val randomValue = Math.random().toFloat()
         var cumulativeProbability = 0f
         for (card in cardsWithRarity) {
             cumulativeProbability += card.rarity
             if (randomValue <= cumulativeProbability) {
-                return card.drawableRes
+                return card
             }
         }
-        return cardsWithRarity.first().drawableRes
+        return cardsWithRarity.first()
     }
 
     fun buyPack() {
         if (coinBalance >= packPrice) {
-            onCoinBalanceChange(coinBalance - packPrice) // Update the coin balance
+            onCoinBalanceChange(coinBalance - packPrice)
             val newCards = List(3) { getRandomCard() }
-            navController.navigate("packOpening/${newCards.joinToString(",")}")
-            showErrorMessage = false
+            onCardsAdded(newCards)
+            navController.navigate("packOpening/${newCards.joinToString(",") { it.id.toString() }}")
         } else {
             showErrorMessage = true
         }
@@ -368,11 +431,9 @@ fun ShopPage(
 @Composable
 fun PackOpeningScreen(
     cardIds: List<Int>,
-    navController: NavHostController,
-    onCardsRevealed: (List<Int>) -> Unit // Callback to add cards to collection
+    navController: NavHostController
 ) {
-    // State to track the current card index
-    var currentIndex by remember { mutableStateOf(0) }
+    var currentIndex by remember { mutableIntStateOf(0) }
 
     Box(
         modifier = Modifier
@@ -381,9 +442,8 @@ fun PackOpeningScreen(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Display the current card image
             Image(
-                painter = painterResource(id = cardIds[currentIndex]),
+                painter = painterResource(id = getDrawableResByCardId(cardIds[currentIndex])),
                 contentDescription = "Revealed Card",
                 modifier = Modifier
                     .fillMaxWidth()
@@ -392,7 +452,6 @@ fun PackOpeningScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Display "Next" or "Finish" button
             Text(
                 text = if (currentIndex < cardIds.size - 1) "Next" else "Finish",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
@@ -400,22 +459,24 @@ fun PackOpeningScreen(
                 modifier = Modifier
                     .clickable {
                         if (currentIndex < cardIds.size - 1) {
-                            // Move to the next card
                             currentIndex++
                         } else {
-                            // Add cards to the collection and navigate back to the shop
-                            onCardsRevealed(cardIds)
                             navController.popBackStack()
                         }
                     }
-                    .padding(8.dp) // Add padding for better clickability
+                    .padding(8.dp)
             )
         }
     }
 }
 
-
-
+fun getDrawableResByCardId(cardId: Int): Int {
+    return when (cardId) {
+        1 -> R.drawable.cinnamoroll
+        2 -> R.drawable.pompompudding
+        else -> R.drawable.logo // A default fallback image
+    }
+}
 
 @Composable
 fun InfoPage() {
