@@ -4,12 +4,16 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import at.ac.fhstp.sanriotcg.model.Card
+import at.ac.fhstp.sanriotcg.model.Album
 
-@Database(entities = [Card::class], version = 2, exportSchema = false)
+@Database(entities = [Card::class, Album::class], version = 3, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class CardDatabase : RoomDatabase() {
 
     abstract fun cardDao(): CardDao
+    abstract fun albumDao(): AlbumDao
 
     companion object {
         @Volatile
