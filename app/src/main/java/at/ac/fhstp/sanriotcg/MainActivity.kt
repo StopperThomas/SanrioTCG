@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,6 +60,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -103,48 +107,55 @@ fun AppHeader() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "Logo",
+                    contentDescription = "Sanrio Logo",
                     modifier = Modifier.size(40.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("SanrioTCG", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                Text(
+                    "SanrioTCG",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF7687D3)
+                    )
+                )
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1976D2))
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFFFDBF7))
     )
 }
 
 
 @Composable
 fun AppFooter(navController: NavHostController) {
-    NavigationBar(containerColor = Color(0xFF1976D2)) {
+    NavigationBar(containerColor = Color(0xFFFFDBF7)) {
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = Color.White) },
-            label = { Text("Home", color = Color.White) },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = Color(0xFF7687D3)) },
+            label = { Text("Home", color = Color(0xFF7687D3)) },
             selected = false,
             onClick = { navController.navigate("home") }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Collection", tint = Color.White) },
-            label = { Text("Collection", color = Color.White) },
+            icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Collection", tint = Color(0xFF7687D3)) },
+            label = { Text("Collection", color = Color(0xFF7687D3)) },
             selected = false,
             onClick = { navController.navigate("collection") }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Album", tint = Color.White) },
-            label = { Text("Album", color = Color.White) },
+            icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Album", tint = Color(0xFF7687D3)) },
+            label = { Text("Album", color = Color(0xFF7687D3)) },
             selected = false,
             onClick = { navController.navigate("album") }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Storefront, contentDescription = "Card Shop", tint = Color.White) },
-            label = { Text("Card Shop", color = Color.White) },
+            icon = { Icon(Icons.Default.Storefront, contentDescription = "Card Shop", tint = Color(0xFF7687D3)) },
+            label = { Text("Card Shop", color = Color(0xFF7687D3)) },
             selected = false,
             onClick = { navController.navigate("shop") }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White) },
-            label = { Text("Info", color = Color.White) },
+            icon = { Icon(Icons.Default.Info, contentDescription = "Info", tint = Color(0xFF7687D3)) },
+            label = { Text("Info", color = Color(0xFF7687D3)) },
             selected = false,
             onClick = { navController.navigate("info") }
         )
@@ -207,16 +218,20 @@ fun HomePage() {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(color = Color(0xFFFFF0FB))
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Home Page",
+            text = "Welcome to SanrioTCG!",
             style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = FontFamily(
+                    Font(R.font.pacifico)
+                ),
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            ),
-            color = Color(0xFF1976D2)
+                fontSize = 24.sp,
+                color = Color(0xFF7687D3)
+            )
         )
     }
 }
@@ -226,14 +241,18 @@ fun HomePage() {
 fun CollectionPage(navController: NavHostController, collectedCards: List<Card>) {
     val maxCards = 10
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)
+        .background(color = Color(0xFFFFF0FB))
+    ) {
         Text(
             text = "Card Collection",
             style = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
             ),
-            color = Color(0xFF1976D2)
+            color = Color(0xFF7687D3)
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -310,7 +329,7 @@ fun FullScreenCardPage(
                 Row {
                     Text(
                         text = "Sell for 50 Coins",
-                        color = Color(0xFF1976D2),
+                        color = Color(0xFF7687D3),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         modifier = Modifier
                             .clickable {
@@ -388,7 +407,7 @@ fun AlbumPage(
                                 }
                             },
                         colors = CardDefaults.cardColors(
-                            containerColor = if (selectedCards.contains(card)) Color(0xFF1976D2) else Color(0xFFEEEEEE)
+                            containerColor = if (selectedCards.contains(card)) Color(0xFF7687D3) else Color(0xFFEEEEEE)
                         )
                     ) {
                         Image(
@@ -420,7 +439,10 @@ fun AlbumPage(
                     selectedCards = emptySet()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = albumName.isNotEmpty() && selectedCards.isNotEmpty()
+                enabled = albumName.isNotEmpty() && selectedCards.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7687D3)
+                )
             ) {
                 Text("Create Album")
             }
@@ -433,7 +455,10 @@ fun AlbumPage(
                     albumName = ""
                     selectedCards = emptySet()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7687D3)
+                )
             ) {
                 Text("Cancel")
             }
@@ -454,13 +479,16 @@ fun AlbumPage(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit Album",
-                        tint = Color(0xFF1976D2)
+                        tint = Color(0xFF7687D3)
                     )
                 }
 
                 Button(
                     onClick = { selectedAlbum = null },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7687D3)
+                    )
                 ) {
                     Text("Back to Albums")
                 }
@@ -509,7 +537,7 @@ fun AlbumPage(
                                     }
                                 },
                             colors = CardDefaults.cardColors(
-                                containerColor = if (selectedCards.contains(card)) Color(0xFF1976D2) else Color(0xFFEEEEEE)
+                                containerColor = if (selectedCards.contains(card)) Color(0xFF7687D3) else Color(0xFFEEEEEE)
                             )
                         ) {
                             Image(
@@ -538,7 +566,10 @@ fun AlbumPage(
                         }
                         isEditingAlbum = false
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7687D3)
+                    )
                 ) {
                     Text("Save Changes")
                 }
@@ -549,7 +580,10 @@ fun AlbumPage(
                     onClick = {
                         isEditingAlbum = false
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7687D3)
+                    )
                 ) {
                     Text("Cancel")
                 }
@@ -560,7 +594,7 @@ fun AlbumPage(
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp
                     ),
-                    color = Color(0xFF1976D2)
+                    color = Color(0xFF7687D3)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -598,7 +632,7 @@ fun AlbumPage(
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp
                 ),
-                color = Color(0xFF1976D2)
+                color = Color(0xFF7687D3)
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -637,7 +671,10 @@ fun AlbumPage(
 
             Button(
                 onClick = { isCreatingAlbum = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7687D3)
+                )
             ) {
                 Text("Start Creating Album")
             }
@@ -661,14 +698,20 @@ fun AlbumPage(
                         }
                         selectedAlbum = null
                         showDeleteConfirmation = false
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7687D3)
+                    )
                 ) {
                     Text("Yes, Delete")
                 }
             },
             dismissButton = {
                 Button(
-                    onClick = { showDeleteConfirmation = false }
+                    onClick = { showDeleteConfirmation = false },
+                    colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7687D3)
+                    )
                 ) {
                     Text("Cancel")
                 }
@@ -705,20 +748,38 @@ fun ShopPage(
         Card(
             id = 3,
             drawableRes = R.drawable.ichigo_man,
-            rarity = 0.2f,
+            rarity = 0.1f,
             name = "Ichigo Man to the rescue!"
         ),
         Card(
             id = 4,
             drawableRes = R.drawable.tuxedo_sam,
-            rarity = 0.2f,
+            rarity = 0.1f,
             name = "Tuxedo Sam"
         ),
         Card(
             id = 5,
             drawableRes = R.drawable.keroppi,
-            rarity = 0.2f,
+            rarity = 0.1f,
             name = "Kero Kero Keroppi"
+        ),
+        Card(
+            id = 6,
+            drawableRes = R.drawable.pompompurin,
+            rarity = 0.1f,
+            name = "Pompompurin"
+        ),
+        Card(
+            id = 7,
+            drawableRes = R.drawable.hello_kitty,
+            rarity = 0.1f,
+            name = "Hello Kitty"
+        ),
+        Card(
+            id = 8,
+            drawableRes = R.drawable.cinnamon_pile,
+            rarity = 0.1f,
+            name = "Cinnamon Pile"
         ),
     )
 
@@ -748,6 +809,7 @@ fun ShopPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(color = Color(0xFFFFF0FB))
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -758,7 +820,7 @@ fun ShopPage(
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp
                 ),
-                color = Color(0xFF1976D2)
+                color = Color(0xFF7687D3)
             )
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -810,7 +872,7 @@ fun PackOpeningScreen(
             Text(
                 text = if (currentIndex < cardIds.size - 1) "Next" else "Finish",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFF1976D2),
+                color = Color(0xFF7687D3),
                 modifier = Modifier
                     .clickable {
                         if (currentIndex < cardIds.size - 1) {
@@ -833,6 +895,9 @@ fun getDrawableResByCardId(cardId: Int): Int {
         3 -> R.drawable.ichigo_man
         4 -> R.drawable.tuxedo_sam
         5 -> R.drawable.keroppi
+        6 -> R.drawable.pompompurin
+        7 -> R.drawable.hello_kitty
+        8 -> R.drawable.cinnamon_pile
         else -> R.drawable.logo
     }
 }
@@ -843,16 +908,18 @@ fun InfoPage() {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(color = Color(0xFFFFF0FB))
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "Info Page",
             style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = FontFamily.Cursive,
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            ),
-            color = Color(0xFF1976D2)
+                fontSize = 24.sp,
+                color = Color(0xFFFF69B4)
+            )
         )
     }
 }
