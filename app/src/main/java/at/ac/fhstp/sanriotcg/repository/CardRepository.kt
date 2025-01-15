@@ -18,9 +18,7 @@ class CardRepository(private val cardDao: CardDao) {
         return card
     }
 
-    // This method needs to be a suspend function since it fetches data from a Flow
     suspend fun getCardById(cardId: Int): Card? {
-        // Collect the latest value from the flow
         return allCards.first().find { it.id == cardId }
     }
 }

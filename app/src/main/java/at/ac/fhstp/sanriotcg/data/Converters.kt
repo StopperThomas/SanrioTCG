@@ -14,7 +14,7 @@ class Converters {
     fun toCardIds(cardIdsString: String?): List<Int>? {
         return cardIdsString?.let {
             val listType = object : TypeToken<List<Int>>() {}.type
-            Gson().fromJson<List<Int>>(it, listType)
+            Gson().fromJson(it, listType)
         }
     }
 }

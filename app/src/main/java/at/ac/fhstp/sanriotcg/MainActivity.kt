@@ -1,5 +1,6 @@
 package at.ac.fhstp.sanriotcg
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -38,6 +41,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -49,6 +53,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -63,6 +68,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -72,6 +78,7 @@ import androidx.navigation.compose.rememberNavController
 import at.ac.fhstp.sanriotcg.data.CardDatabase
 import at.ac.fhstp.sanriotcg.model.Album
 import at.ac.fhstp.sanriotcg.model.Card
+import at.ac.fhstp.sanriotcg.model.Challenge
 import at.ac.fhstp.sanriotcg.repository.AlbumRepository
 import at.ac.fhstp.sanriotcg.repository.CardRepository
 import at.ac.fhstp.sanriotcg.ui.theme.SanrioTCGTheme
@@ -80,6 +87,13 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private lateinit var cardRepository: CardRepository
     private lateinit var albumRepository: AlbumRepository
+
+    private val challenges = mutableListOf(
+        Challenge("Open 10 Packs", 10, 0, 500),
+        Challenge("Collect 5 Rare Cards", 5, 0, 300),
+        Challenge("Spend 500 Coins", 500, 0, 200),
+        Challenge("Sell 5 Cards", 5, 0, 150)
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +105,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             SanrioTCGTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    CardApp(cardRepository, albumRepository)
+                    CardApp(
+                        cardRepository,
+                        albumRepository,
+                        challenges
+                    )
                 }
             }
         }
@@ -163,12 +181,22 @@ fun AppFooter(navController: NavHostController) {
 }
 
 
+@SuppressLint("MutableCollectionMutableState")
 @Composable
-fun CardApp(cardRepository: CardRepository, albumRepository: AlbumRepository) {
+fun CardApp(
+    cardRepository: CardRepository,
+    albumRepository: AlbumRepository,
+    challenges: MutableList<Challenge>
+) {
     val navController = rememberNavController()
     val collectedCards by cardRepository.allCards.collectAsState(initial = emptyList())
     var coinBalance by remember { mutableIntStateOf(500) }
+    var cardsSold by remember { mutableIntStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
+
+    val challengesState = remember { mutableStateOf(challenges) }
+
+    val totalSpent = remember { mutableIntStateOf(0) }
 
     Scaffold(
         topBar = { AppHeader() },
@@ -176,7 +204,13 @@ fun CardApp(cardRepository: CardRepository, albumRepository: AlbumRepository) {
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             NavHost(navController = navController, startDestination = "home") {
-                composable("home") { HomePage() }
+                composable("home") {
+                    HomePage(
+                        challenges = challengesState.value,
+                        coinBalance = coinBalance,
+                        onCoinBalanceChange = { newBalance -> coinBalance = newBalance }
+                    )
+                }
                 composable("collection") {
                     CollectionPage(navController, collectedCards)
                 }
@@ -192,7 +226,9 @@ fun CardApp(cardRepository: CardRepository, albumRepository: AlbumRepository) {
                                     cardRepository.insert(card)
                                 }
                             }
-                        }
+                        },
+                        challenges = challengesState,
+                        totalSpent = totalSpent
                     )
                 }
                 composable("info") { InfoPage() }
@@ -200,6 +236,11 @@ fun CardApp(cardRepository: CardRepository, albumRepository: AlbumRepository) {
                     val cardId = backStackEntry.arguments?.getString("cardId")?.toInt() ?: 0
                     FullScreenCardPage(cardId, navController, cardRepository, onSell = {
                         coinBalance += 50
+                        cardsSold++
+                        val sellChallenge = challengesState.value.find { it.name == "Sell 5 Cards" }
+                        sellChallenge?.let {
+                            it.progress = minOf(cardsSold, it.target)
+                        }
                     })
                 }
                 composable("packOpening/{cardIds}") { backStackEntry ->
@@ -214,24 +255,132 @@ fun CardApp(cardRepository: CardRepository, albumRepository: AlbumRepository) {
 
 
 @Composable
-fun HomePage() {
+fun HomePage(
+    challenges: MutableList<Challenge>,
+    coinBalance: Int,
+    onCoinBalanceChange: (Int) -> Unit
+) {
+    var showClaimDialog by remember { mutableStateOf(false) }
+
+    fun calculateRewardCoins(): Int {
+        return challenges.filter { it.progress >= it.target && !it.claimed }
+            .sumOf { it.reward }
+    }
+
+    var rewardCoins by remember { mutableIntStateOf(0) }
+
+    val hasUnclaimedRewards = challenges.any { it.progress >= it.target && !it.claimed }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(color = Color(0xFFFFF0FB))
             .padding(16.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.TopCenter
     ) {
-        Text(
-            text = "Welcome to SanrioTCG!",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontFamily = FontFamily(
-                    Font(R.font.pacifico)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Welcome to SanrioTCG!",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = FontFamily(Font(R.font.pacifico)),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                    color = Color(0xFF7687D3)
+                )
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Your Current Challenges:",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
                 ),
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
                 color = Color(0xFF7687D3)
             )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            challenges.forEach { challenge ->
+                ChallengeItem(challenge)
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = {
+                    rewardCoins = calculateRewardCoins()
+                    showClaimDialog = true
+                },
+                enabled = hasUnclaimedRewards,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))
+            ) {
+                Text("Claim Rewards", color = Color.White, fontFamily = FontFamily.SansSerif)
+            }
+
+            if (showClaimDialog) {
+                AlertDialog(
+                    onDismissRequest = { showClaimDialog = false },
+                    title = { Text("Claim Rewards", fontFamily = FontFamily.SansSerif) },
+                    text = { Text("You have earned $rewardCoins coins.", fontFamily = FontFamily.SansSerif) },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                onCoinBalanceChange(coinBalance + rewardCoins)
+
+                                challenges.filter { it.progress >= it.target && !it.claimed }
+                                    .forEach { it.claimed = true }
+
+                                rewardCoins = 0
+                                showClaimDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))
+                        ) {
+                            Text("Claim", color = Color.White, fontFamily = FontFamily.SansSerif)
+                        }
+                    },
+                    dismissButton = {
+                        Button(
+                            onClick = { showClaimDialog = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))
+                        ) {
+                            Text("Cancel", color = Color.White, fontFamily = FontFamily.SansSerif)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun ChallengeItem(challenge: Challenge) {
+    val progress = remember { mutableIntStateOf(challenge.progress) }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+        Text(
+            text = challenge.name,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            ),
+            color = Color(0xFF7687D3)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        LinearProgressIndicator(
+            progress = { progress.intValue / challenge.target.toFloat() },
+            modifier = Modifier.fillMaxWidth().height(8.dp),
+            color = Color(0xFF7687D3),
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "${progress.intValue} / ${challenge.target} - Reward: ${challenge.reward} coins",
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
+            color = Color.Gray
         )
     }
 }
@@ -726,61 +875,24 @@ fun ShopPage(
     navController: NavHostController,
     coinBalance: Int,
     onCoinBalanceChange: (Int) -> Unit,
-    onCardsAdded: (List<Card>) -> Unit
+    onCardsAdded: (List<Card>) -> Unit,
+    challenges: MutableState<MutableList<Challenge>>,
+    totalSpent: MutableState<Int>
 ) {
     var showErrorMessage by remember { mutableStateOf(false) }
 
     val packPrice = 100
 
     val cardsWithRarity = listOf(
-        Card(
-            id = 1,
-            drawableRes = R.drawable.cinnamoroll,
-            rarity = 0.2f,
-            name = "Cinnamoroll"
-        ),
-        Card(
-            id = 2,
-            drawableRes = R.drawable.pompompudding,
-            rarity = 0.2f,
-            name = "Pompompudding"
-        ),
-        Card(
-            id = 3,
-            drawableRes = R.drawable.ichigo_man,
-            rarity = 0.1f,
-            name = "Ichigo Man to the rescue!"
-        ),
-        Card(
-            id = 4,
-            drawableRes = R.drawable.tuxedo_sam,
-            rarity = 0.1f,
-            name = "Tuxedo Sam"
-        ),
-        Card(
-            id = 5,
-            drawableRes = R.drawable.keroppi,
-            rarity = 0.1f,
-            name = "Kero Kero Keroppi"
-        ),
-        Card(
-            id = 6,
-            drawableRes = R.drawable.pompompurin,
-            rarity = 0.1f,
-            name = "Pompompurin"
-        ),
-        Card(
-            id = 7,
-            drawableRes = R.drawable.hello_kitty,
-            rarity = 0.1f,
-            name = "Hello Kitty"
-        ),
-        Card(
-            id = 8,
-            drawableRes = R.drawable.cinnamon_pile,
-            rarity = 0.1f,
-            name = "Cinnamon Pile"
-        ),
+        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.2f, name = "Cinnamoroll"),
+        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.15f, name = "Pompompudding"),
+        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.1f, name = "Ichigo Man to the rescue!"),
+        Card(id = 4, drawableRes = R.drawable.tuxedo_sam, rarity = 0.1f, name = "Tuxedo Sam"),
+        Card(id = 5, drawableRes = R.drawable.keroppi, rarity = 0.1f, name = "Kero Kero Keroppi"),
+        Card(id = 6, drawableRes = R.drawable.pompompurin, rarity = 0.1f, name = "Pompompurin"),
+        Card(id = 7, drawableRes = R.drawable.hello_kitty, rarity = 0.1f, name = "Hello Kitty"),
+        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.1f, name = "Cinnamon Pile"),
+        Card(id = 9, drawableRes = R.drawable.my_melody, rarity = 0.05f, name = "My Melody")
     )
 
     fun getRandomCard(): Card {
@@ -795,11 +907,41 @@ fun ShopPage(
         return cardsWithRarity.first()
     }
 
-    fun buyPack() {
+    fun buyPack(
+        challenges: MutableState<MutableList<Challenge>>,
+        coinBalance: Int,
+        onCoinBalanceChange: (Int) -> Unit,
+        onCardsAdded: (List<Card>) -> Unit,
+        navController: NavHostController,
+        totalSpent: MutableState<Int>
+    ) {
         if (coinBalance >= packPrice) {
             onCoinBalanceChange(coinBalance - packPrice)
+
             val newCards = List(3) { getRandomCard() }
             onCardsAdded(newCards)
+
+            totalSpent.value += packPrice
+
+            val openPacksChallenge = challenges.value.find { it.name == "Open 10 Packs" }
+            openPacksChallenge?.let {
+                it.progress = minOf(it.progress + 1, it.target)
+            }
+
+            newCards.forEach { card ->
+                if (card.rarity < 0.1) {
+                    val rareCardChallenge = challenges.value.find { it.name == "Collect 5 Rare Cards" }
+                    rareCardChallenge?.let {
+                        it.progress = minOf(it.progress + 1, it.target)
+                    }
+                }
+            }
+
+            val spendChallenge = challenges.value.find { it.name == "Spend 500 Coins" }
+            spendChallenge?.let {
+                it.progress = minOf(totalSpent.value, it.target)
+            }
+
             navController.navigate("packOpening/${newCards.joinToString(",") { it.id.toString() }}")
         } else {
             showErrorMessage = true
@@ -828,16 +970,19 @@ fun ShopPage(
                 painter = painterResource(id = R.drawable.card_pack),
                 contentDescription = "Card Pack",
                 modifier = Modifier
+                    .clickable {
+                        buyPack(challenges, coinBalance, onCoinBalanceChange, onCardsAdded, navController, totalSpent)
+                    }
                     .size(150.dp)
-                    .clickable { buyPack() }
             )
 
+            Spacer(modifier = Modifier.height(32.dp))
+
             if (showErrorMessage) {
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "You don't have enough coins!",
+                    text = "Not enough coins to buy a pack!",
                     color = Color.Red,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
@@ -898,6 +1043,7 @@ fun getDrawableResByCardId(cardId: Int): Int {
         6 -> R.drawable.pompompurin
         7 -> R.drawable.hello_kitty
         8 -> R.drawable.cinnamon_pile
+        9 -> R.drawable.my_melody
         else -> R.drawable.logo
     }
 }
@@ -909,17 +1055,123 @@ fun InfoPage() {
         modifier = Modifier
             .fillMaxSize()
             .background(color = Color(0xFFFFF0FB))
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+            .padding(16.dp)
     ) {
-        Text(
-            text = "Info Page",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontFamily = FontFamily.Cursive,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                color = Color(0xFFFF69B4)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.verticalScroll(rememberScrollState())
+        ) {
+            Text(
+                text = "Info / Help",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                    color = Color(0xFF7687D3)
+                ),
+                modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            InfoSection(
+                title = "How Challenges Work",
+                content = """
+                    Challenges are tasks you can complete to earn coins and rewards. 
+                    Some challenges may require you to open card packs, collect rare cards, or sell cards. 
+                    Completing challenges will reward you with coins, which can be used to buy more card packs!
+                """.trimIndent()
+            )
+
+            InfoSection(
+                title = "Collecting Cards",
+                content = """
+                    You can collect cards by purchasing and opening card packs in the Card Shop. 
+                    Each pack contains 3 random cards with varying rarities. 
+                    
+                    Cards are categorized into common, uncommon, rare and legendary types.
+                    Rarity is determined by the amount of stars.
+                    Spell and Trap cards don't have a star value, but are treated like Common cards.
+                    
+                    Common cards have either 1, 2 or 3 stars.
+                    Uncommon cards have 4 or 5 stars.
+                    Rare cards have 6 or 7 stars.
+                    And Legendary cards have 8 stars.
+                """.trimIndent()
+            )
+
+            InfoSection(
+                title = "How to Earn Coins",
+                content = """
+                    You can earn coins in several ways:
+                    - Completing challenges
+                    - Selling unwanted cards
+                    
+                    Use your coins to buy more card packs and continue expanding your collection!
+                """.trimIndent()
+            )
+
+            InfoSection(
+                title = "Creating Albums",
+                content = """
+                    In the Albums Section, you can create albums to organize and showcase your favorite cards.
+                    Collect and save your most prized cards to display them in your albums!
+                """.trimIndent()
+            )
+
+            InfoSection(
+                title = "Card Drop Rates",
+                content = """
+                    The odds of getting different types of cards are as follows:
+                    - Common Cards: 50% chance
+                    - Uncommon Cards: 35% chance
+                    - Rare Cards: 12.5% chance
+                    - Legendary Cards: 2.5% chance
+                    
+                    These odds apply each time you open a card pack. Good luck on your collection journey!
+                """.trimIndent()
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "©\nThomas Stopper, cc231012\nLeonie Kozak, cc231010\n\nSanrioTCG, 2025",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        color = Color(0xFF7687D3)
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun InfoSection(title: String, content: String) {
+    Column(modifier = Modifier.padding(bottom = 24.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Color(0xFF7687D3)
+            ),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Text(
+            text = content,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 16.sp,
+                color = Color(0xFF555555)
+            ),
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
 }
