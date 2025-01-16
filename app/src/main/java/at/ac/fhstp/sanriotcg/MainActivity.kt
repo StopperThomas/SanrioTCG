@@ -4,8 +4,14 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -49,6 +56,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -63,7 +71,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -82,6 +92,7 @@ import at.ac.fhstp.sanriotcg.model.Challenge
 import at.ac.fhstp.sanriotcg.repository.AlbumRepository
 import at.ac.fhstp.sanriotcg.repository.CardRepository
 import at.ac.fhstp.sanriotcg.ui.theme.SanrioTCGTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -390,53 +401,59 @@ fun ChallengeItem(challenge: Challenge) {
 fun CollectionPage(navController: NavHostController, collectedCards: List<Card>) {
     val maxCards = 10
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)
-        .background(color = Color(0xFFFFF0FB))
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color = Color(0xFFFFF0FB))
     ) {
-        Text(
-            text = "Card Collection",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            ),
-            color = Color(0xFF7687D3)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Collected Cards: ${collectedCards.size}/$maxCards",
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp
-            ),
-            color = Color.Gray
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            items(collectedCards) { card ->
-                Card(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth()
-                        .clickable {
-                            navController.navigate("fullScreenCard/${card.id}")
-                        },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEEEEEE))
-                ) {
-                    Image(
-                        painter = painterResource(id = card.drawableRes),
-                        contentDescription = "Card Image",
+            Text(
+                text = "Card Collection",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                ),
+                color = Color(0xFF7687D3)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Collected Cards: ${collectedCards.size}/$maxCards",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 16.sp
+                ),
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                items(collectedCards) { card ->
+                    Card(
                         modifier = Modifier
+                            .padding(8.dp)
                             .fillMaxWidth()
-                            .aspectRatio(1f)
-                    )
+                            .clickable {
+                                navController.navigate("fullScreenCard/${card.id}")
+                            },
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFDBF7).copy(alpha = 0.5f))
+                    ) {
+                        Image(
+                            painter = painterResource(id = card.drawableRes),
+                            contentDescription = "Card Image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                        )
+                    }
                 }
             }
         }
@@ -478,7 +495,7 @@ fun FullScreenCardPage(
                 Row {
                     Text(
                         text = "Sell for 50 Coins",
-                        color = Color(0xFF7687D3),
+                        color = Color(0xFFFF6961),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         modifier = Modifier
                             .clickable {
@@ -495,7 +512,8 @@ fun FullScreenCardPage(
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = "Back",
-                        color = Color.Gray,
+                        color = Color(0xFF7687D3),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         modifier = Modifier
                             .clickable { navController.popBackStack() }
                             .padding(8.dp)
@@ -507,6 +525,8 @@ fun FullScreenCardPage(
 }
 
 
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumPage(
     collectedCards: List<Card>,
@@ -521,148 +541,48 @@ fun AlbumPage(
     val albums by albumRepository.allAlbums.collectAsState(initial = emptyList())
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        if (isCreatingAlbum) {
-            LaunchedEffect(isCreatingAlbum) {
-                albumName = ""
-                selectedCards = emptySet()
-            }
-
-            TextField(
-                value = albumName,
-                onValueChange = { albumName = it },
-                label = { Text("Album Name") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text("Select Cards for Album", style = MaterialTheme.typography.bodyLarge)
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                items(collectedCards) { card ->
-                    Card(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clickable {
-                                selectedCards = if (selectedCards.contains(card)) {
-                                    selectedCards - card
-                                } else {
-                                    selectedCards + card
-                                }
-                            },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (selectedCards.contains(card)) Color(0xFF7687D3) else Color(0xFFEEEEEE)
-                        )
-                    ) {
-                        Image(
-                            painter = painterResource(id = card.drawableRes),
-                            contentDescription = "Card Image",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    val newAlbum = Album(
-                        name = albumName,
-                        cardIds = selectedCards.map { it.id }
-                    )
-
-                    coroutineScope.launch {
-                        albumRepository.insert(newAlbum)
-                    }
-
-                    isCreatingAlbum = false
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color = Color(0xFFFFF0FB))
+    ) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            if (isCreatingAlbum) {
+                LaunchedEffect(isCreatingAlbum) {
                     albumName = ""
                     selectedCards = emptySet()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = albumName.isNotEmpty() && selectedCards.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7687D3)
-                )
-            ) {
-                Text("Create Album")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    isCreatingAlbum = false
-                    albumName = ""
-                    selectedCards = emptySet()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7687D3)
-                )
-            ) {
-                Text("Cancel")
-            }
-        } else if (selectedAlbum != null) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                IconButton(
-                    onClick = {
-                        isEditingAlbum = true
-                        albumName = selectedAlbum?.name ?: ""
-                        selectedCards = collectedCards.filter { card ->
-                            selectedAlbum?.cardIds?.contains(card.id) == true
-                        }.toSet()
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Album",
-                        tint = Color(0xFF7687D3)
-                    )
                 }
 
-                Button(
-                    onClick = { selectedAlbum = null },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7687D3)
-                    )
-                ) {
-                    Text("Back to Albums")
-                }
-
-                IconButton(
-                    onClick = {
-                        showDeleteConfirmation = true
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Album",
-                        tint = Color.Red
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (isEditingAlbum) {
                 TextField(
                     value = albumName,
                     onValueChange = { albumName = it },
-                    label = { Text("Album Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = {
+                        Text(
+                            "Album Name",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = Color(0xFF7687D3),
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .background(
+                            Color(0xFFE8EAF6),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    colors = TextFieldDefaults.textFieldColors(
+                        focusedLabelColor = Color(0xFF7687D3),
+                        unfocusedLabelColor = Color(0xFF7687D3),
+                        focusedIndicatorColor = Color(0xFF7687D3),
+                        unfocusedIndicatorColor = Color(0xFFB0BEC5),
+                        containerColor = Color.Transparent,
+                        focusedTextColor = Color(0xFF7687D3),
+                        unfocusedTextColor = Color(0xFF7687D3),
+                        cursorColor = Color(0xFF7687D3)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -672,7 +592,7 @@ fun AlbumPage(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(8.dp)
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     items(collectedCards) { card ->
                         Card(
@@ -686,7 +606,8 @@ fun AlbumPage(
                                     }
                                 },
                             colors = CardDefaults.cardColors(
-                                containerColor = if (selectedCards.contains(card)) Color(0xFF7687D3) else Color(0xFFEEEEEE)
+                                containerColor = if (selectedCards.contains(card)) Color(0xFF7687D3)
+                                else Color(0xFFFFDBF7).copy(alpha = 0.5f)
                             )
                         ) {
                             Image(
@@ -704,30 +625,35 @@ fun AlbumPage(
 
                 Button(
                     onClick = {
-                        selectedAlbum?.let { album ->
-                            val updatedAlbum = album.copy(name = albumName, cardIds = selectedCards.map { card -> card.id })
+                        val newAlbum = Album(
+                            name = albumName,
+                            cardIds = selectedCards.map { it.id }
+                        )
 
-                            coroutineScope.launch {
-                                albumRepository.update(updatedAlbum)
-
-                                selectedAlbum = updatedAlbum
-                            }
+                        coroutineScope.launch {
+                            albumRepository.insert(newAlbum)
                         }
-                        isEditingAlbum = false
+
+                        isCreatingAlbum = false
+                        albumName = ""
+                        selectedCards = emptySet()
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = albumName.isNotEmpty() && selectedCards.isNotEmpty(),
                     colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7687D3)
+                        containerColor = Color(0xFF7687D3)
                     )
                 ) {
-                    Text("Save Changes")
+                    Text("Create Album")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = {
-                        isEditingAlbum = false
+                        isCreatingAlbum = false
+                        albumName = ""
+                        selectedCards = emptySet()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
@@ -736,9 +662,201 @@ fun AlbumPage(
                 ) {
                     Text("Cancel")
                 }
+            } else if (selectedAlbum != null) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    IconButton(
+                        onClick = {
+                            isEditingAlbum = true
+                            albumName = selectedAlbum?.name ?: ""
+                            selectedCards = collectedCards.filter { card ->
+                                selectedAlbum?.cardIds?.contains(card.id) == true
+                            }.toSet()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Album",
+                            tint = Color(0xFF7687D3)
+                        )
+                    }
+
+                    Button(
+                        onClick = { selectedAlbum = null },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF7687D3)
+                        )
+                    ) {
+                        Text("Back to Albums")
+                    }
+
+                    IconButton(
+                        onClick = {
+                            showDeleteConfirmation = true
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Album",
+                            tint = Color(0xFFFF6961)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (isEditingAlbum) {
+                    TextField(
+                        value = albumName,
+                        onValueChange = { albumName = it },
+                        label = {
+                            Text(
+                                "Album Name",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = Color(0xFF7687D3),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .background(
+                                Color(0xFFE8EAF6),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        colors = TextFieldDefaults.textFieldColors(
+                            focusedLabelColor = Color(0xFF7687D3),
+                            unfocusedLabelColor = Color(0xFF7687D3),
+                            focusedIndicatorColor = Color(0xFF7687D3),
+                            unfocusedIndicatorColor = Color(0xFFB0BEC5),
+                            containerColor = Color.Transparent,
+                            focusedTextColor = Color(0xFF7687D3),
+                            unfocusedTextColor = Color(0xFF7687D3),
+                            cursorColor = Color(0xFF7687D3)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Select Cards for Album", style = MaterialTheme.typography.bodyLarge)
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        items(collectedCards) { card ->
+                            Card(
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .clickable {
+                                        selectedCards = if (selectedCards.contains(card)) {
+                                            selectedCards - card
+                                        } else {
+                                            selectedCards + card
+                                        }
+                                    },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (selectedCards.contains(card)) Color(
+                                        0xFF7687D3
+                                    ) else Color(0xFFFFDBF7).copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Image(
+                                    painter = painterResource(id = card.drawableRes),
+                                    contentDescription = "Card Image",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            selectedAlbum?.let { album ->
+                                val updatedAlbum = album.copy(
+                                    name = albumName,
+                                    cardIds = selectedCards.map { card -> card.id })
+
+                                coroutineScope.launch {
+                                    albumRepository.update(updatedAlbum)
+
+                                    selectedAlbum = updatedAlbum
+                                }
+                            }
+                            isEditingAlbum = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF7687D3)
+                        )
+                    ) {
+                        Text("Save Changes")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            isEditingAlbum = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF7687D3)
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+                } else {
+                    Text(
+                        text = selectedAlbum?.name ?: "",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        ),
+                        color = Color(0xFF7687D3)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val cardsInAlbum = collectedCards.filter { card ->
+                        selectedAlbum?.cardIds?.contains(card.id) == true
+                    }
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        items(cardsInAlbum) { card ->
+                            Card(
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFDBF7).copy(alpha = 0.5f))
+                            ) {
+                                Image(
+                                    painter = painterResource(id = card.drawableRes),
+                                    contentDescription = "Card Image",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1f)
+                                )
+                            }
+                        }
+                    }
+                }
             } else {
                 Text(
-                    text = selectedAlbum?.name ?: "",
+                    text = "Your Albums",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp
@@ -747,85 +865,79 @@ fun AlbumPage(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val cardsInAlbum = collectedCards.filter { card ->
-                    selectedAlbum?.cardIds?.contains(card.id) == true
-                }
+                if (albums.isNotEmpty()) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(1),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        items(albums) { album ->
+                            val albumCards = collectedCards.filter { card -> album.cardIds.contains(card.id) }
+                            val thumbnailCard = albumCards.firstOrNull()
 
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(8.dp)
-                ) {
-                    items(cardsInAlbum) { card ->
-                        Card(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFEEEEEE))
-                        ) {
-                            Image(
-                                painter = painterResource(id = card.drawableRes),
-                                contentDescription = "Card Image",
+                            Card(
                                 modifier = Modifier
+                                    .padding(8.dp)
                                     .fillMaxWidth()
-                                    .aspectRatio(1f)
-                            )
+                                    .clickable {
+                                        selectedAlbum = album
+                                    }
+                                    .border(2.dp, Color(0xFF7687D3), RoundedCornerShape(12.dp)),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFDBF7).copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = album.name,
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "${albumCards.size} Cards",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF7687D3)
+                                        )
+                                    }
+
+                                    if (thumbnailCard != null) {
+                                        Image(
+                                            painter = painterResource(id = thumbnailCard.drawableRes),
+                                            contentDescription = "Thumbnail",
+                                            modifier = Modifier
+                                                .size(120.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
+                } else {
+                    Text("No albums available.")
                 }
-            }
-        } else {
-            Text(
-                text = "Your Albums",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
-                ),
-                color = Color(0xFF7687D3)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
 
-            if (albums.isNotEmpty()) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(8.dp)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = { isCreatingAlbum = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7687D3)
+                    )
                 ) {
-                    items(albums) { album ->
-                        Card(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedAlbum = album
-                                },
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFEEEEEE))
-                        ) {
-                            Text(
-                                text = album.name,
-                                modifier = Modifier.padding(8.dp),
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-                            )
-                        }
-                    }
+                    Text("Start Creating Album")
                 }
-            } else {
-                Text("No albums available.")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { isCreatingAlbum = true },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7687D3)
-                )
-            ) {
-                Text("Start Creating Album")
             }
         }
     }
@@ -859,7 +971,7 @@ fun AlbumPage(
                 Button(
                     onClick = { showDeleteConfirmation = false },
                     colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7687D3)
+                        containerColor = Color(0xFF7687D3)
                     )
                 ) {
                     Text("Cancel")
@@ -955,7 +1067,10 @@ fun ShopPage(
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
                 text = "Coins: $coinBalance",
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -964,19 +1079,33 @@ fun ShopPage(
                 ),
                 color = Color(0xFF7687D3)
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Image(
-                painter = painterResource(id = R.drawable.card_pack),
-                contentDescription = "Card Pack",
-                modifier = Modifier
-                    .clickable {
-                        buyPack(challenges, coinBalance, onCoinBalanceChange, onCardsAdded, navController, totalSpent)
-                    }
-                    .size(150.dp)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.card_pack),
+                    contentDescription = "Card Pack",
+                    modifier = Modifier
+                        .clickable {
+                            buyPack(challenges, coinBalance, onCoinBalanceChange, onCardsAdded, navController, totalSpent)
+                        }
+                        .size(275.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Price: $packPrice Coins",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    ),
+                    color = Color(0xFF7687D3)
+                )
+            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (showErrorMessage) {
                 Text(
@@ -996,6 +1125,31 @@ fun PackOpeningScreen(
     navController: NavHostController
 ) {
     var currentIndex by remember { mutableIntStateOf(0) }
+    var isAnimating by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isAnimating) {
+        if (isAnimating) {
+            delay(300)
+            currentIndex++
+            isAnimating = false
+        }
+    }
+
+    val transition = updateTransition(targetState = isAnimating, label = "Card Transition")
+
+    val scale by transition.animateFloat(
+        transitionSpec = {
+            tween(durationMillis = 300, easing = FastOutSlowInEasing)
+        },
+        label = "Scale Animation"
+    ) { animating -> if (animating) 0.5f else 1f }
+
+    val alpha by transition.animateFloat(
+        transitionSpec = {
+            tween(durationMillis = 300, easing = LinearEasing)
+        },
+        label = "Alpha Animation"
+    ) { animating -> if (animating) 0f else 1f }
 
     Box(
         modifier = Modifier
@@ -1004,13 +1158,23 @@ fun PackOpeningScreen(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(id = getDrawableResByCardId(cardIds[currentIndex])),
-                contentDescription = "Revealed Card",
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .size(500.dp)
                     .aspectRatio(1f)
-            )
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        alpha = alpha
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = getDrawableResByCardId(cardIds[currentIndex])),
+                    contentDescription = "Revealed Card",
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1021,7 +1185,9 @@ fun PackOpeningScreen(
                 modifier = Modifier
                     .clickable {
                         if (currentIndex < cardIds.size - 1) {
-                            currentIndex++
+                            if (!isAnimating) {
+                                isAnimating = true
+                            }
                         } else {
                             navController.popBackStack()
                         }
