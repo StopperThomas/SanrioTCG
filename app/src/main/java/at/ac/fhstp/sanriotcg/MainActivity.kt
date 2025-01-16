@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -74,7 +76,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -89,11 +93,13 @@ import at.ac.fhstp.sanriotcg.data.CardDatabase
 import at.ac.fhstp.sanriotcg.model.Album
 import at.ac.fhstp.sanriotcg.model.Card
 import at.ac.fhstp.sanriotcg.model.Challenge
+import at.ac.fhstp.sanriotcg.model.Circle
 import at.ac.fhstp.sanriotcg.repository.AlbumRepository
 import at.ac.fhstp.sanriotcg.repository.CardRepository
 import at.ac.fhstp.sanriotcg.ui.theme.SanrioTCGTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     private lateinit var cardRepository: CardRepository
@@ -258,6 +264,14 @@ fun CardApp(
                     val cardIdsString = backStackEntry.arguments?.getString("cardIds")
                     val cardIds = cardIdsString?.split(",")?.map { it.toInt() } ?: emptyList()
                     PackOpeningScreen(cardIds, navController)
+                }
+                composable("minigame") {
+                    MinigamePage(
+                        navController = navController,
+                        onCoinBalanceChange = { earnedCoins ->
+                            coinBalance += earnedCoins
+                        }
+                    )
                 }
             }
         }
@@ -996,15 +1010,17 @@ fun ShopPage(
     val packPrice = 100
 
     val cardsWithRarity = listOf(
-        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.2f, name = "Cinnamoroll"),
-        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.15f, name = "Pompompudding"),
-        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.1f, name = "Ichigo Man to the rescue!"),
-        Card(id = 4, drawableRes = R.drawable.tuxedo_sam, rarity = 0.1f, name = "Tuxedo Sam"),
-        Card(id = 5, drawableRes = R.drawable.keroppi, rarity = 0.1f, name = "Kero Kero Keroppi"),
-        Card(id = 6, drawableRes = R.drawable.pompompurin, rarity = 0.1f, name = "Pompompurin"),
-        Card(id = 7, drawableRes = R.drawable.hello_kitty, rarity = 0.1f, name = "Hello Kitty"),
-        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.1f, name = "Cinnamon Pile"),
-        Card(id = 9, drawableRes = R.drawable.my_melody, rarity = 0.05f, name = "My Melody")
+        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.2f, name = "Cinnamoroll"), // Common
+        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.15f, name = "Pompompudding"), // Spell - Common
+        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.1f, name = "Ichigo Man to the rescue!"), // Trap - Common
+        Card(id = 4, drawableRes = R.drawable.tuxedo_sam, rarity = 0.1f, name = "Tuxedo Sam"), // Uncommon
+        Card(id = 5, drawableRes = R.drawable.keroppi, rarity = 0.1f, name = "Kero Kero Keroppi"), // Uncommon
+        Card(id = 6, drawableRes = R.drawable.pompompurin, rarity = 0.1f, name = "Pompompurin"), // Uncommon
+        Card(id = 7, drawableRes = R.drawable.hello_kitty, rarity = 0.1f, name = "Hello Kitty"), // Uncommon
+        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.1f, name = "Cinnamon Pile"), // Spell - Common
+        Card(id = 9, drawableRes = R.drawable.my_melody, rarity = 0.05f, name = "My Melody"), // Uncommon
+        Card(id = 10, drawableRes = R.drawable.best_friends_forever, rarity = 0.05f, name = "Best Friends Forever"), // Rare
+        Card(id = 11, drawableRes = R.drawable.shadow, rarity = 0.025f, name = "Shadow") // Legendary
     )
 
     fun getRandomCard(): Card {
@@ -1108,11 +1124,20 @@ fun ShopPage(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (showErrorMessage) {
-                Text(
-                    text = "Not enough coins to buy a pack!",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Out of money? Play a game!",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { navController.navigate("minigame") },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))) {
+                        Text(text = "Play Minigame"
+                        )
+                    }
+                }
             }
         }
     }
@@ -1199,6 +1224,168 @@ fun PackOpeningScreen(
 }
 
 
+@Composable
+fun MinigamePage(
+    navController: NavHostController,
+    onCoinBalanceChange: (Int) -> Unit
+) {
+    var earnedCoins by remember { mutableIntStateOf(0) }
+    var circles by remember { mutableStateOf(listOf<Circle>()) }
+    var showDialog by remember { mutableStateOf(false) }
+    var isSpawningCircles by remember { mutableStateOf(true) }  // Flag to control circle spawning
+    val coroutineScope = rememberCoroutineScope()
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+
+    val paddingTop = 0.dp
+    val paddingBottom = 300.dp
+
+    fun generateRandomCircle(): Circle {
+        val id = Random.nextInt()
+        val x = Random.nextFloat() * 0.8f + 0.1f
+        val y = Random.nextFloat() * 0.8f + 0.1f
+        return Circle(id, x, y)
+    }
+
+    fun removeCircleAfterDelay(circle: Circle, delayMillis: Long) {
+        coroutineScope.launch {
+            delay(delayMillis)
+            circles = circles.filter { it.id != circle.id }
+        }
+    }
+
+    LaunchedEffect(isSpawningCircles) {
+        while (isSpawningCircles) {
+            val newCircle = generateRandomCircle()
+            circles = circles + newCircle
+            removeCircleAfterDelay(newCircle, 1000L)
+            delay(1000L)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFFFF0FB))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = paddingTop, bottom = paddingBottom) // Padding applied here
+        ) {
+            circles.forEach { circle ->
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .offset(
+                            x = (circle.x * screenWidth.value).dp,
+                            y = (circle.y * (screenHeight.value - paddingTop.value - paddingBottom.value)).dp + paddingTop // Correct calculation for y
+                        )
+                        .clip(CircleShape)
+                        .clickable {
+                            earnedCoins += 10
+                            circles = circles.filter { it.id != circle.id }
+                        }
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.coin),
+                        contentDescription = "Coin Circle",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Coins Earned: $earnedCoins",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    color = Color(0xFF7687D3),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
+            )
+        }
+
+        // Return to Shop Button
+        Button(
+            onClick = {
+                isSpawningCircles = false  // Stop spawning circles when button is pressed
+                showDialog = true
+            },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))
+        ) {
+            Text(
+                text = "Return to Shop",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFFF0FB),
+                    fontSize = 18.sp
+                )
+            )
+        }
+
+        // Show Dialog with individual styling for text and button
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = {
+                    Text(
+                        text = "Good Job!",
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = Color(0xFF7687D3)
+                        )
+                    )
+                },
+                text = {
+                    Text(
+                        text = "You earned $earnedCoins coins!",
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 16.sp,
+                            color = Color(0xFF7687D3)
+                        )
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onCoinBalanceChange(earnedCoins)
+                            earnedCoins = 0
+                            showDialog = false
+                            navController.popBackStack()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))
+                    ) {
+                        Text(
+                            text = "OK",
+                            style = TextStyle(
+                                fontFamily = FontFamily.SansSerif,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color(0xFFFFF0FB)
+                            )
+                        )
+                    }
+                }
+            )
+        }
+    }
+}
+
+
 fun getDrawableResByCardId(cardId: Int): Int {
     return when (cardId) {
         1 -> R.drawable.cinnamoroll
@@ -1210,6 +1397,8 @@ fun getDrawableResByCardId(cardId: Int): Int {
         7 -> R.drawable.hello_kitty
         8 -> R.drawable.cinnamon_pile
         9 -> R.drawable.my_melody
+        10 -> R.drawable.best_friends_forever
+        11 -> R.drawable.shadow
         else -> R.drawable.logo
     }
 }
@@ -1270,8 +1459,20 @@ fun InfoPage() {
                     You can earn coins in several ways:
                     - Completing challenges
                     - Selling unwanted cards
+                    - Play Minigame
                     
                     Use your coins to buy more card packs and continue expanding your collection!
+                """.trimIndent()
+            )
+
+            InfoSection(
+                title = "How the Minigame Works",
+                content = """
+                    The Minigame, which can only be played when you're out of coins, allows you to earn coins by clicking on randomly spawning coin circles.
+                    - Coins spawn at random positions on the screen.
+                    - Each time you click on a coin, you earn 10 coins.
+                    - The coins will disappear after 1 second, so be quick to collect them!
+                    - You can stop the minigame at any time by clicking the 'Return to Shop' button.
                 """.trimIndent()
             )
 
