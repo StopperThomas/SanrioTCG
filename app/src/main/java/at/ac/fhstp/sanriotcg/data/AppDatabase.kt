@@ -7,24 +7,28 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import at.ac.fhstp.sanriotcg.model.Card
 import at.ac.fhstp.sanriotcg.model.Album
+import at.ac.fhstp.sanriotcg.model.CoinBalance
+import at.ac.fhstp.sanriotcg.model.Challenge
 
-@Database(entities = [Card::class, Album::class], version = 3, exportSchema = false)
+@Database(entities = [Card::class, Album::class, CoinBalance::class, Challenge::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
-abstract class CardDatabase : RoomDatabase() {
+abstract class AppDatabase : RoomDatabase() {
 
     abstract fun cardDao(): CardDao
     abstract fun albumDao(): AlbumDao
+    abstract fun coinBalanceDao(): CoinBalanceDao
+    abstract fun challengeDao(): ChallengeDao
 
     companion object {
         @Volatile
-        private var INSTANCE: CardDatabase? = null
+        private var INSTANCE: AppDatabase? = null
 
-        fun getDatabase(context: Context): CardDatabase {
+        fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
-                    CardDatabase::class.java,
-                    "card_database"
+                    AppDatabase::class.java,
+                    "database"
                 )
                     .fallbackToDestructiveMigration()
                     .build()

@@ -1,6 +1,5 @@
 package at.ac.fhstp.sanriotcg
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -85,39 +84,56 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import at.ac.fhstp.sanriotcg.data.CardDatabase
+import at.ac.fhstp.sanriotcg.data.AppDatabase
+import at.ac.fhstp.sanriotcg.data.CoinBalanceDao
 import at.ac.fhstp.sanriotcg.model.Album
 import at.ac.fhstp.sanriotcg.model.Card
 import at.ac.fhstp.sanriotcg.model.Challenge
 import at.ac.fhstp.sanriotcg.model.Circle
+import at.ac.fhstp.sanriotcg.model.CoinBalance
 import at.ac.fhstp.sanriotcg.repository.AlbumRepository
 import at.ac.fhstp.sanriotcg.repository.CardRepository
+import at.ac.fhstp.sanriotcg.repository.ChallengeRepository
 import at.ac.fhstp.sanriotcg.ui.theme.SanrioTCGTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     private lateinit var cardRepository: CardRepository
     private lateinit var albumRepository: AlbumRepository
-
-    private val challenges = mutableListOf(
-        Challenge("Open 10 Packs", 10, 0, 500),
-        Challenge("Collect 5 Rare Cards", 5, 0, 300),
-        Challenge("Spend 500 Coins", 500, 0, 200),
-        Challenge("Sell 5 Cards", 5, 0, 150)
-    )
+    private lateinit var challengeRepository: ChallengeRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val database = CardDatabase.getDatabase(this)
-        cardRepository = CardRepository(database.cardDao())
-        albumRepository = AlbumRepository(database.albumDao())
+        val appDatabase = AppDatabase.getDatabase(this)
+        cardRepository = CardRepository(appDatabase.cardDao())
+        albumRepository = AlbumRepository(appDatabase.albumDao())
+        challengeRepository = ChallengeRepository(appDatabase.challengeDao())
+
+        lifecycleScope.launch {
+            val existingChallenges = challengeRepository.getChallenges().first()
+
+            if (existingChallenges.isEmpty()) {
+                val challenges = listOf(
+                    Challenge(name = "Open 10 Packs", target = 10, reward = 500),
+                    Challenge(name = "Collect 5 Rare Cards", target = 5, reward = 300),
+                    Challenge(name = "Spend 500 Coins", target = 500, reward = 200),
+                    Challenge(name = "Sell 5 Cards", target = 5, reward = 150)
+                )
+
+                challenges.forEach { challenge ->
+                    challengeRepository.insertOrUpdate(challenge)
+                }
+            }
+        }
 
         setContent {
             SanrioTCGTheme {
@@ -125,7 +141,8 @@ class MainActivity : ComponentActivity() {
                     CardApp(
                         cardRepository,
                         albumRepository,
-                        challenges
+                        challengeRepository,
+                        coinBalanceDao = appDatabase.coinBalanceDao()
                     )
                 }
             }
@@ -149,7 +166,7 @@ fun AppHeader() {
                 Text(
                     "SanrioTCG",
                     style = MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = FontFamily.SansSerif,
+                        fontFamily = FontFamily(Font(R.font.pacifico)),
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF7687D3)
                     )
@@ -198,22 +215,30 @@ fun AppFooter(navController: NavHostController) {
 }
 
 
-@SuppressLint("MutableCollectionMutableState")
 @Composable
 fun CardApp(
     cardRepository: CardRepository,
     albumRepository: AlbumRepository,
-    challenges: MutableList<Challenge>
+    challengeRepository: ChallengeRepository,
+    coinBalanceDao: CoinBalanceDao
 ) {
     val navController = rememberNavController()
     val collectedCards by cardRepository.allCards.collectAsState(initial = emptyList())
-    var coinBalance by remember { mutableIntStateOf(500) }
-    var cardsSold by remember { mutableIntStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
 
-    val challengesState = remember { mutableStateOf(challenges) }
+    val coinBalanceFlow = coinBalanceDao.getCoinBalance()
+    val coinBalanceState = coinBalanceFlow.collectAsState(initial = CoinBalance(balance = 500))
+    val coinBalance = coinBalanceState.value?.balance ?: 500 // default fallback coinBalance
 
+    val challengesState by challengeRepository.getChallenges().collectAsState(initial = emptyList())
     val totalSpent = remember { mutableIntStateOf(0) }
+    var cardsSold by remember { mutableIntStateOf(0) }
+
+    fun updateCoinBalance(newBalance: Int) {
+        coroutineScope.launch {
+            coinBalanceDao.insertOrUpdate(CoinBalance(balance = newBalance))
+        }
+    }
 
     Scaffold(
         topBar = { AppHeader() },
@@ -223,9 +248,10 @@ fun CardApp(
             NavHost(navController = navController, startDestination = "home") {
                 composable("home") {
                     HomePage(
-                        challenges = challengesState.value,
+                        challenges = challengesState,
                         coinBalance = coinBalance,
-                        onCoinBalanceChange = { newBalance -> coinBalance = newBalance }
+                        onCoinBalanceChange = { updateCoinBalance(it) },
+                        challengeRepository = challengeRepository
                     )
                 }
                 composable("collection") {
@@ -236,25 +262,24 @@ fun CardApp(
                     ShopPage(
                         navController,
                         coinBalance,
-                        onCoinBalanceChange = { newBalance -> coinBalance = newBalance },
+                        onCoinBalanceChange = { updateCoinBalance(it) },
                         onCardsAdded = { newCards ->
                             coroutineScope.launch {
-                                newCards.forEach { card ->
-                                    cardRepository.insert(card)
-                                }
+                                newCards.forEach { card -> cardRepository.insert(card) }
                             }
                         },
                         challenges = challengesState,
-                        totalSpent = totalSpent
+                        totalSpent = totalSpent,
+                        challengeRepository = challengeRepository
                     )
                 }
                 composable("info") { InfoPage() }
                 composable("fullScreenCard/{cardId}") { backStackEntry ->
                     val cardId = backStackEntry.arguments?.getString("cardId")?.toInt() ?: 0
-                    FullScreenCardPage(cardId, navController, cardRepository, onSell = {
-                        coinBalance += 50
+                    FullScreenCardPage(cardId, navController, cardRepository, onSell = { price ->
+                        updateCoinBalance(coinBalance + price)
                         cardsSold++
-                        val sellChallenge = challengesState.value.find { it.name == "Sell 5 Cards" }
+                        val sellChallenge = challengesState.find { it.name == "Sell 5 Cards" }
                         sellChallenge?.let {
                             it.progress = minOf(cardsSold, it.target)
                         }
@@ -269,7 +294,7 @@ fun CardApp(
                     MinigamePage(
                         navController = navController,
                         onCoinBalanceChange = { earnedCoins ->
-                            coinBalance += earnedCoins
+                            updateCoinBalance(coinBalance + earnedCoins)
                         }
                     )
                 }
@@ -281,8 +306,9 @@ fun CardApp(
 
 @Composable
 fun HomePage(
-    challenges: MutableList<Challenge>,
+    challenges: List<Challenge>,
     coinBalance: Int,
+    challengeRepository: ChallengeRepository,
     onCoinBalanceChange: (Int) -> Unit
 ) {
     var showClaimDialog by remember { mutableStateOf(false) }
@@ -296,6 +322,8 @@ fun HomePage(
 
     val hasUnclaimedRewards = challenges.any { it.progress >= it.target && !it.claimed }
 
+    val coroutineScope = rememberCoroutineScope()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -304,16 +332,19 @@ fun HomePage(
         contentAlignment = Alignment.TopCenter
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             Text(
-                text = "Welcome to SanrioTCG!",
+                text = "Welcome to SanrioTCG! :3",
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = FontFamily(Font(R.font.pacifico)),
-                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.ExtraBold,
                     fontSize = 24.sp,
                     color = Color(0xFF7687D3)
                 )
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(64.dp))
 
             Text(
                 text = "Your Current Challenges:",
@@ -327,7 +358,7 @@ fun HomePage(
             Spacer(modifier = Modifier.height(16.dp))
 
             challenges.forEach { challenge ->
-                ChallengeItem(challenge)
+                ChallengeItem(challenge, challengeRepository)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -354,7 +385,12 @@ fun HomePage(
                                 onCoinBalanceChange(coinBalance + rewardCoins)
 
                                 challenges.filter { it.progress >= it.target && !it.claimed }
-                                    .forEach { it.claimed = true }
+                                    .forEach { challenge ->
+                                        coroutineScope.launch {
+                                            challengeRepository.markAsClaimed(challenge.id)
+                                        }
+                                        challenge.claimed = true
+                                    }
 
                                 rewardCoins = 0
                                 showClaimDialog = false
@@ -380,7 +416,7 @@ fun HomePage(
 
 
 @Composable
-fun ChallengeItem(challenge: Challenge) {
+fun ChallengeItem(challenge: Challenge, challengeRepository: ChallengeRepository) {
     val progress = remember { mutableIntStateOf(challenge.progress) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
@@ -408,12 +444,16 @@ fun ChallengeItem(challenge: Challenge) {
             color = Color.Gray
         )
     }
+
+    LaunchedEffect(progress.intValue) {
+        challengeRepository.updateProgress(challenge.id, progress.intValue)
+    }
 }
 
 
 @Composable
 fun CollectionPage(navController: NavHostController, collectedCards: List<Card>) {
-    val maxCards = 10
+    val maxCards = 11
 
     Box(
         modifier = Modifier
@@ -460,13 +500,18 @@ fun CollectionPage(navController: NavHostController, collectedCards: List<Card>)
                             },
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFDBF7).copy(alpha = 0.5f))
                     ) {
-                        Image(
-                            painter = painterResource(id = card.drawableRes),
-                            contentDescription = "Card Image",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = card.drawableRes),
+                                contentDescription = "Card Image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -474,14 +519,27 @@ fun CollectionPage(navController: NavHostController, collectedCards: List<Card>)
     }
 }
 
-
 @Composable
 fun FullScreenCardPage(
     cardId: Int,
     navController: NavHostController,
     cardRepository: CardRepository,
-    onSell: () -> Unit
+    onSell: (Int) -> Unit
 ) {
+    val cardPrices = mapOf(
+        1 to 50,  // Cinnamoroll
+        2 to 60,  // Pompompudding
+        3 to 70,  // Ichigo Man to the rescue!
+        4 to 80,  // Tuxedo Sam
+        5 to 90,  // Kero Kero Keroppi
+        6 to 100, // Pompompurin
+        7 to 110, // Hello Kitty
+        8 to 120, // Cinnamon Pile
+        9 to 130, // My Melody
+        10 to 150, // Best Friends Forever
+        11 to 200  // Shadow
+    )
+
     var card by remember { mutableStateOf<Card?>(null) }
 
     LaunchedEffect(cardId) {
@@ -507,8 +565,9 @@ fun FullScreenCardPage(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row {
+                    val price = cardPrices[cardId] ?: 0
                     Text(
-                        text = "Sell for 50 Coins",
+                        text = "Sell for $price Coins",
                         color = Color(0xFFFF6961),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         modifier = Modifier
@@ -517,7 +576,7 @@ fun FullScreenCardPage(
                                     if (it != null) {
                                         cardRepository.delete(it)
                                     }
-                                    onSell()
+                                    onSell(price)
                                     navController.popBackStack()
                                 }
                             }
@@ -1002,24 +1061,25 @@ fun ShopPage(
     coinBalance: Int,
     onCoinBalanceChange: (Int) -> Unit,
     onCardsAdded: (List<Card>) -> Unit,
-    challenges: MutableState<MutableList<Challenge>>,
-    totalSpent: MutableState<Int>
+    challenges: List<Challenge>,
+    totalSpent: MutableState<Int>,
+    challengeRepository: ChallengeRepository
 ) {
     var showErrorMessage by remember { mutableStateOf(false) }
 
     val packPrice = 100
 
     val cardsWithRarity = listOf(
-        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.2f, name = "Cinnamoroll"), // Common
-        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.15f, name = "Pompompudding"), // Spell - Common
-        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.1f, name = "Ichigo Man to the rescue!"), // Trap - Common
-        Card(id = 4, drawableRes = R.drawable.tuxedo_sam, rarity = 0.1f, name = "Tuxedo Sam"), // Uncommon
-        Card(id = 5, drawableRes = R.drawable.keroppi, rarity = 0.1f, name = "Kero Kero Keroppi"), // Uncommon
-        Card(id = 6, drawableRes = R.drawable.pompompurin, rarity = 0.1f, name = "Pompompurin"), // Uncommon
-        Card(id = 7, drawableRes = R.drawable.hello_kitty, rarity = 0.1f, name = "Hello Kitty"), // Uncommon
-        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.1f, name = "Cinnamon Pile"), // Spell - Common
-        Card(id = 9, drawableRes = R.drawable.my_melody, rarity = 0.05f, name = "My Melody"), // Uncommon
-        Card(id = 10, drawableRes = R.drawable.best_friends_forever, rarity = 0.05f, name = "Best Friends Forever"), // Rare
+        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.125f, name = "Cinnamoroll"), // Common
+        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.125f, name = "Pompompudding"), // Spell - Common
+        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.125f, name = "Ichigo Man to the rescue!"), // Trap - Common
+        Card(id = 4, drawableRes = R.drawable.tuxedo_sam, rarity = 0.07f, name = "Tuxedo Sam"), // Uncommon
+        Card(id = 5, drawableRes = R.drawable.keroppi, rarity = 0.07f, name = "Kero Kero Keroppi"), // Uncommon
+        Card(id = 6, drawableRes = R.drawable.pompompurin, rarity = 0.07f, name = "Pompompurin"), // Uncommon
+        Card(id = 7, drawableRes = R.drawable.hello_kitty, rarity = 0.07f, name = "Hello Kitty"), // Uncommon
+        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.125f, name = "Cinnamon Pile"), // Spell - Common
+        Card(id = 9, drawableRes = R.drawable.my_melody, rarity = 0.07f, name = "My Melody"), // Uncommon
+        Card(id = 10, drawableRes = R.drawable.best_friends_forever, rarity = 0.125f, name = "Best Friends Forever"), // Rare
         Card(id = 11, drawableRes = R.drawable.shadow, rarity = 0.025f, name = "Shadow") // Legendary
     )
 
@@ -1035,14 +1095,9 @@ fun ShopPage(
         return cardsWithRarity.first()
     }
 
-    fun buyPack(
-        challenges: MutableState<MutableList<Challenge>>,
-        coinBalance: Int,
-        onCoinBalanceChange: (Int) -> Unit,
-        onCardsAdded: (List<Card>) -> Unit,
-        navController: NavHostController,
-        totalSpent: MutableState<Int>
-    ) {
+    val coroutineScope = rememberCoroutineScope()
+
+    fun buyPack() {
         if (coinBalance >= packPrice) {
             onCoinBalanceChange(coinBalance - packPrice)
 
@@ -1051,23 +1106,31 @@ fun ShopPage(
 
             totalSpent.value += packPrice
 
-            val openPacksChallenge = challenges.value.find { it.name == "Open 10 Packs" }
-            openPacksChallenge?.let {
-                it.progress = minOf(it.progress + 1, it.target)
-            }
-
-            newCards.forEach { card ->
-                if (card.rarity < 0.1) {
-                    val rareCardChallenge = challenges.value.find { it.name == "Collect 5 Rare Cards" }
-                    rareCardChallenge?.let {
-                        it.progress = minOf(it.progress + 1, it.target)
+            challenges.forEach { challenge ->
+                if (challenge.name == "Open 10 Packs") {
+                    challenge.progress = minOf(challenge.progress + 1, challenge.target)
+                    coroutineScope.launch {
+                        challengeRepository.updateProgress(challenge.id, challenge.progress)
                     }
                 }
-            }
 
-            val spendChallenge = challenges.value.find { it.name == "Spend 500 Coins" }
-            spendChallenge?.let {
-                it.progress = minOf(totalSpent.value, it.target)
+                newCards.forEach { card ->
+                    if (card.rarity < 0.1) {
+                        if (challenge.name == "Collect 5 Rare Cards") {
+                            challenge.progress = minOf(challenge.progress + 1, challenge.target)
+                            coroutineScope.launch {
+                                challengeRepository.updateProgress(challenge.id, challenge.progress)
+                            }
+                        }
+                    }
+                }
+
+                if (challenge.name == "Spend 500 Coins") {
+                    challenge.progress = minOf(totalSpent.value, challenge.target)
+                    coroutineScope.launch {
+                        challengeRepository.updateProgress(challenge.id, challenge.progress)
+                    }
+                }
             }
 
             navController.navigate("packOpening/${newCards.joinToString(",") { it.id.toString() }}")
@@ -1105,9 +1168,7 @@ fun ShopPage(
                     painter = painterResource(id = R.drawable.card_pack),
                     contentDescription = "Card Pack",
                     modifier = Modifier
-                        .clickable {
-                            buyPack(challenges, coinBalance, onCoinBalanceChange, onCardsAdded, navController, totalSpent)
-                        }
+                        .clickable { buyPack() }
                         .size(275.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1133,9 +1194,9 @@ fun ShopPage(
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
                         onClick = { navController.navigate("minigame") },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))) {
-                        Text(text = "Play Minigame"
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))
+                    ) {
+                        Text(text = "Play Minigame")
                     }
                 }
             }
@@ -1232,7 +1293,7 @@ fun MinigamePage(
     var earnedCoins by remember { mutableIntStateOf(0) }
     var circles by remember { mutableStateOf(listOf<Circle>()) }
     var showDialog by remember { mutableStateOf(false) }
-    var isSpawningCircles by remember { mutableStateOf(true) }  // Flag to control circle spawning
+    var isSpawningCircles by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -1271,7 +1332,7 @@ fun MinigamePage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = paddingTop, bottom = paddingBottom) // Padding applied here
+                .padding(top = paddingTop, bottom = paddingBottom)
         ) {
             circles.forEach { circle ->
                 Box(
@@ -1279,7 +1340,7 @@ fun MinigamePage(
                         .size(50.dp)
                         .offset(
                             x = (circle.x * screenWidth.value).dp,
-                            y = (circle.y * (screenHeight.value - paddingTop.value - paddingBottom.value)).dp + paddingTop // Correct calculation for y
+                            y = (circle.y * (screenHeight.value - paddingTop.value - paddingBottom.value)).dp + paddingTop
                         )
                         .clip(CircleShape)
                         .clickable {
@@ -1313,10 +1374,9 @@ fun MinigamePage(
             )
         }
 
-        // Return to Shop Button
         Button(
             onClick = {
-                isSpawningCircles = false  // Stop spawning circles when button is pressed
+                isSpawningCircles = false
                 showDialog = true
             },
             modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
@@ -1333,7 +1393,6 @@ fun MinigamePage(
             )
         }
 
-        // Show Dialog with individual styling for text and button
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
@@ -1457,9 +1516,9 @@ fun InfoPage() {
                 title = "How to Earn Coins",
                 content = """
                     You can earn coins in several ways:
-                    - Completing challenges
-                    - Selling unwanted cards
-                    - Play Minigame
+                    - Completing challenges.
+                    - Selling unwanted cards.
+                    - Playing Minigame.
                     
                     Use your coins to buy more card packs and continue expanding your collection!
                 """.trimIndent()
