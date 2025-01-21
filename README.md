@@ -11,6 +11,11 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
 
 ---
 
+## APK Download link
+[Download the APK](https://drive.google.com/file/d/1sFnLNWbMAFbMSSRUingiATaXJmIPz_i6/view?usp=sharing)
+
+---
+
 ## Main Screens and Features
 
 ### 1. Home Screen
