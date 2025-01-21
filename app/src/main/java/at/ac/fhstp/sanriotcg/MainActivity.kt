@@ -69,6 +69,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -232,7 +233,6 @@ fun CardApp(
 
     val challengesState by challengeRepository.getChallenges().collectAsState(initial = emptyList())
     val totalSpent = remember { mutableIntStateOf(0) }
-    var cardsSold by remember { mutableIntStateOf(0) }
 
     fun updateCoinBalance(newBalance: Int) {
         coroutineScope.launch {
@@ -278,10 +278,15 @@ fun CardApp(
                     val cardId = backStackEntry.arguments?.getString("cardId")?.toInt() ?: 0
                     FullScreenCardPage(cardId, navController, cardRepository, onSell = { price ->
                         updateCoinBalance(coinBalance + price)
-                        cardsSold++
+
                         val sellChallenge = challengesState.find { it.name == "Sell 5 Cards" }
                         sellChallenge?.let {
-                            it.progress = minOf(cardsSold, it.target)
+                            val newProgress = it.progress + 1
+                            it.progress = minOf(newProgress, it.target)
+
+                            coroutineScope.launch {
+                                challengeRepository.updateProgress(it.id, it.progress)
+                            }
                         }
                     })
                 }
@@ -453,7 +458,16 @@ fun ChallengeItem(challenge: Challenge, challengeRepository: ChallengeRepository
 
 @Composable
 fun CollectionPage(navController: NavHostController, collectedCards: List<Card>) {
-    val maxCards = 11
+    val maxCards = 12
+    var showCongratulations by rememberSaveable { mutableStateOf(false) }
+    var hasShownCongratulations by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(collectedCards.size) {
+        if (collectedCards.size == maxCards && !hasShownCongratulations) {
+            showCongratulations = true
+            hasShownCongratulations = true
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -516,8 +530,15 @@ fun CollectionPage(navController: NavHostController, collectedCards: List<Card>)
                 }
             }
         }
+
+        if (showCongratulations) {
+            CongratulationsPopup {
+                showCongratulations = false
+            }
+        }
     }
 }
+
 
 @Composable
 fun FullScreenCardPage(
@@ -537,7 +558,8 @@ fun FullScreenCardPage(
         8 to 120, // Cinnamon Pile
         9 to 130, // My Melody
         10 to 150, // Best Friends Forever
-        11 to 200  // Shadow
+        11 to 200, // Shadow
+        12 to 50, // Maria
     )
 
     var card by remember { mutableStateOf<Card?>(null) }
@@ -595,6 +617,58 @@ fun FullScreenCardPage(
             }
         }
     }
+}
+
+
+@Composable
+fun CongratulationsPopup(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Congratulations!",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp,
+                        color = Color(0xFF7687D3)
+                    )
+                )
+            }
+        },
+        text = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "You have collected all cards!",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = 18.sp,
+                        color = Color.Gray
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7687D3))
+                ) {
+                    Text(text = "OK", color = Color.White)
+                }
+            }
+        },
+        modifier = Modifier.padding(16.dp)
+    )
 }
 
 
@@ -1070,17 +1144,18 @@ fun ShopPage(
     val packPrice = 100
 
     val cardsWithRarity = listOf(
-        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.125f, name = "Cinnamoroll"), // Common
-        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.125f, name = "Pompompudding"), // Spell - Common
-        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.125f, name = "Ichigo Man to the rescue!"), // Trap - Common
+        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.1f, name = "Cinnamoroll"), // Common
+        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.1f, name = "Pompompudding"), // Spell - Common
+        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.1f, name = "Ichigo Man to the rescue!"), // Trap - Common
         Card(id = 4, drawableRes = R.drawable.tuxedo_sam, rarity = 0.07f, name = "Tuxedo Sam"), // Uncommon
         Card(id = 5, drawableRes = R.drawable.keroppi, rarity = 0.07f, name = "Kero Kero Keroppi"), // Uncommon
         Card(id = 6, drawableRes = R.drawable.pompompurin, rarity = 0.07f, name = "Pompompurin"), // Uncommon
         Card(id = 7, drawableRes = R.drawable.hello_kitty, rarity = 0.07f, name = "Hello Kitty"), // Uncommon
-        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.125f, name = "Cinnamon Pile"), // Spell - Common
+        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.1f, name = "Cinnamon Pile"), // Spell - Common
         Card(id = 9, drawableRes = R.drawable.my_melody, rarity = 0.07f, name = "My Melody"), // Uncommon
         Card(id = 10, drawableRes = R.drawable.best_friends_forever, rarity = 0.125f, name = "Best Friends Forever"), // Rare
-        Card(id = 11, drawableRes = R.drawable.shadow, rarity = 0.025f, name = "Shadow") // Legendary
+        Card(id = 11, drawableRes = R.drawable.shadow, rarity = 0.025f, name = "Shadow"), // Legendary
+        Card(id = 12, drawableRes = R.drawable.maria, rarity = 0.1f, name = "Maria") // Common
     )
 
     fun getRandomCard(): Card {
@@ -1458,6 +1533,7 @@ fun getDrawableResByCardId(cardId: Int): Int {
         9 -> R.drawable.my_melody
         10 -> R.drawable.best_friends_forever
         11 -> R.drawable.shadow
+        12 -> R.drawable.maria
         else -> R.drawable.logo
     }
 }
