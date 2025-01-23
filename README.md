@@ -12,25 +12,25 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
 ---
 
 ## APK Download link
-[Download the APK](https://drive.google.com/file/d/1sFnLNWbMAFbMSSRUingiATaXJmIPz_i6/view?usp=sharing)
+[Download the APK](https://drive.google.com/file/d/1aIguUMWKKPL5fi-Qcd4gridhnzYtQptB/view?usp=sharing)
 
 ---
 
 ## Main Screens and Features
 
 ### 1. Home Screen
-- Displays challenges and a summary of the user’s collection progress.
+- Displays all challenges and their progress.
 
 ### 2. Card Collection Screen
 - Displays all collected cards in a grid view.
-- Users can tap a card to view its details (e.g., description, rarity). Note: works only on owned cards.
+- Users can tap a card to view its details (e.g., description, rarity).
 - Users can sell cards in order to gain coins.
 
 ### 3. Albums Screen
-- Users can view, edit and delete their personalized albums.
+- Users can create, read, update & delete their personalized albums.
 
 ### 4. Card Shop Screen
-- Users can select and open card packs using earned coins.
+- Users can buy and open card packs using earned coins.
 
 ### 5. Info / Help Screen
 - Users can look up drop chances & rarities of all cards and can access help (with detailed explanations of the app) and credits.
@@ -42,22 +42,27 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
 
 ---
 
-## Mockups
+## Comparison Mockup vs. Final App
 
 ### 1. Home Screen
 ![Home Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/home_screen_mockup.png)
+![Home Screen](app/src/main/java/at/ac/fhstp/sanriotcg/images/home_screen.png)
 
 ### 2. Card Collection Screen
 ![Card Collection Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/card_collection_mockup.png)
+![Card Collection Screen](app/src/main/java/at/ac/fhstp/sanriotcg/images/card_collection.png)
 
 ### 3. Albums Screen
 ![Albums Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/albums_screen_mockup.png)
+![Albums Screen](app/src/main/java/at/ac/fhstp/sanriotcg/images/albums_screen.png)
 
 ### 4. Card Shop Screen
 ![Card Shop Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/card_shop_mockup.png)
+![Card Shop Screen](app/src/main/java/at/ac/fhstp/sanriotcg/images/card_shop.png)
 
 ### 5. Info / Help Screen
 ![Info / Help Screen Mockup](app/src/main/java/at/ac/fhstp/sanriotcg/images/info_mockup.png)
+![Info / Help Screen](app/src/main/java/at/ac/fhstp/sanriotcg/images/info.png)
 
 ---
 
@@ -81,13 +86,6 @@ Sanrio Card Collector is a delightful mobile app where users can collect, organi
     - Organize their cards into personalized digital albums.
     - Sell cards to gain coins and purchase new card packs.
     - Share their collections with others in a casual, fun environment.
-
-- **Key Features**:
-  - **Home Screen**: Displays challenges and a summary of the user’s collection progress.
-  - **Card Collection Screen**: Shows all collected cards in a grid view. Users can tap a card to view its details (e.g., description, rarity). Users can also sell cards to gain coins.
-  - **Albums Screen**: View, edit, and delete personalized albums.
-  - **Card Shop Screen**: Users can purchase card packs using earned coins.
-  - **Info / Help Screen**: Provides drop chances and rarities for all cards, along with detailed app explanations and credits.
 
 - **Similar Applications**:
   - **Panini Digital Sticker Album**: Allows users to collect digital stickers and trade them with friends. However, it lacks personalization features and doesn’t focus on a specific theme like Sanrio.
@@ -138,7 +136,83 @@ Does completing the challenges encourage Users to use the app more frequently?
 
 ---
 
+## User Tests
+
+### Demographics
+
+- **Age Range**: 19-57
+- **Participants**: 5
+- **Countries**: 4x Austria, 1x Portugal
+
+### Results
+- All Users could find and open a card pack.
+- The card opening mechanism was intuitive to all Users.
+- 60% of the Users were Very Satisfied, 40% Satisfied with the card opening mechanism.
+- All Users found out how to sell cards and deemed the functionality very useful.
+- 4 out of 5 participants found the Minigame.
+- All participants who played the Minigame were satisfied.
+- When asked why Participants viewed the Minigame as intuitive, they gave the following answers:   
+*"very obvious"*  
+*"Self explanatory - you click on coins to get coins. Keeps you occupied."*  
+*"easy to understand"*  
+*"I can't find the minigame"*  
+- All participants were able to fulfil all tasks related to Albums.
+- When asked how satisfied Users were with the Albums, their answers differed:  
+40% - very satisfied  
+20% - satisfied  
+20% - neutral  
+20% - dissatisfied
+- All Participants found and completed the Challenges. They were all very satisfied with them overall, and deemed them to be very intuitive.
+- When asked why they like the challenges, they gave the following answers:  
+*"i like the extra coins :D"*  
+*"Fun little goals you strive to complete, and they are not hard at all."*
+- Most participants reviewed SanrioTCG to be relaxing to play. When asked why they gave the following answers:  
+*"it was very nice to play"*  
+*"Everything was very easy to do and easy to understand, and I had fun with the minigames and challenges."*  
+*"was very satisfying"*
+- 60% of the participants would be interested in actually playing a TCG game with cute themed cards.
+- When asked for any additional feedback, participants answered:  
+*"Personally, I think this game is very well made and was fun to play!"*  
+*"I haven't found any problems using the app, it works very well, although I've never run out of money. Congratulations, the app is exceptional, very good, with lots of features."*  
+*"function is very good and the design/art on the cards amazing"*
+
+---
+
+## Final Reflection
+
+### Thomas Stopper: *(Backend)*
+**Contribution**:
+- Main Functionality of app
+- Database Integration
+- Tested 2 People
+
+**Challenges**:
+- Dependencies
+- Small Problems with Database
+  
+### Leonie Kozak: *(Frontend)*
+**Contribution**
+- Creation of ALL Cards
+- Designed App UI via Jetpack Compose
+- Google Forms Creation
+- Tested 2 People
+
+**Challenges**:
+- Jetpack Compose
+- Not a challenge, but very time consuming: picking a good color scheme that fits the app.
+
+### **Further Improvements**: *(if development continued even after the CCL)*
+- even more cards
+- extra packs with different card sets
+- more ways to earn coins (e.g. more challenges)
+
+  But for the CCL we can say that the final app meets the criteria we set ourselves in the initial concept! :D
+  
+---
+
 ## Tools
-- **Mockup Tools**: Figma for wireframes and PowerPoint for presentation.
-- **User Flow**: Figma.
-- **Code**: Android Studio.
+- **Mockup Tools**: Figma for wireframes and PowerPoint for presentation
+- **User Flow**: Figma
+- **User Testing**: Word & Google Forms
+- **Card Art**: IbisPaintX
+- **Code**: Android Studio
