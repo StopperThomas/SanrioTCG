@@ -226,11 +226,9 @@ fun CardApp(
     val navController = rememberNavController()
     val collectedCards by cardRepository.allCards.collectAsState(initial = emptyList())
     val coroutineScope = rememberCoroutineScope()
-
     val coinBalanceFlow = coinBalanceDao.getCoinBalance()
     val coinBalanceState = coinBalanceFlow.collectAsState(initial = CoinBalance(balance = 500))
     val coinBalance = coinBalanceState.value?.balance ?: 500 // default fallback coinBalance
-
     val challengesState by challengeRepository.getChallenges().collectAsState(initial = emptyList())
     val totalSpent = remember { mutableIntStateOf(0) }
 
@@ -324,9 +322,7 @@ fun HomePage(
     }
 
     var rewardCoins by remember { mutableIntStateOf(0) }
-
     val hasUnclaimedRewards = challenges.any { it.progress >= it.target && !it.claimed }
-
     val coroutineScope = rememberCoroutineScope()
 
     Box(
@@ -458,7 +454,7 @@ fun ChallengeItem(challenge: Challenge, challengeRepository: ChallengeRepository
 
 @Composable
 fun CollectionPage(navController: NavHostController, collectedCards: List<Card>) {
-    val maxCards = 12
+    val maxCards = 19
     var showCongratulations by rememberSaveable { mutableStateOf(false) }
     var hasShownCongratulations by rememberSaveable { mutableStateOf(false) }
 
@@ -549,17 +545,24 @@ fun FullScreenCardPage(
 ) {
     val cardPrices = mapOf(
         1 to 50,  // Cinnamoroll
-        2 to 60,  // Pompompudding
-        3 to 70,  // Ichigo Man to the rescue!
-        4 to 80,  // Tuxedo Sam
-        5 to 90,  // Kero Kero Keroppi
-        6 to 100, // Pompompurin
-        7 to 110, // Hello Kitty
-        8 to 120, // Cinnamon Pile
-        9 to 130, // My Melody
-        10 to 150, // Best Friends Forever
-        11 to 200, // Shadow
-        12 to 50, // Maria
+        2 to 50,  // Pompompudding
+        3 to 50,  // Maria
+        4 to 50,  // Pochacco
+        5 to 70,  // Ichigo Man to the rescue!
+        6 to 70,  // Cinnamon Pile
+        7 to 70,  // Picnic With Friends
+        8 to 70,  // Snack Time
+        9 to 100,  // Tuxedo Sam
+        10 to 100,  // Kero Kero Keroppi
+        11 to 100,  // Pompompurin
+        12 to 100,  // Hello Kitty
+        13 to 100,  // My Melody
+        14 to 200,  // Best Friends Forever
+        15 to 200,  // Chococat
+        16 to 200,  // Kiki
+        17 to 200,  // Lala
+        18 to 500,  // Shadow
+        19 to 1000  // Michail
     )
 
     var card by remember { mutableStateOf<Card?>(null) }
@@ -571,7 +574,9 @@ fun FullScreenCardPage(
     val coroutineScope = rememberCoroutineScope()
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFFFF0FB)),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1144,18 +1149,30 @@ fun ShopPage(
     val packPrice = 100
 
     val cardsWithRarity = listOf(
-        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.1f, name = "Cinnamoroll"), // Common
-        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.1f, name = "Pompompudding"), // Spell - Common
-        Card(id = 3, drawableRes = R.drawable.ichigo_man, rarity = 0.1f, name = "Ichigo Man to the rescue!"), // Trap - Common
-        Card(id = 4, drawableRes = R.drawable.tuxedo_sam, rarity = 0.07f, name = "Tuxedo Sam"), // Uncommon
-        Card(id = 5, drawableRes = R.drawable.keroppi, rarity = 0.07f, name = "Kero Kero Keroppi"), // Uncommon
-        Card(id = 6, drawableRes = R.drawable.pompompurin, rarity = 0.07f, name = "Pompompurin"), // Uncommon
-        Card(id = 7, drawableRes = R.drawable.hello_kitty, rarity = 0.07f, name = "Hello Kitty"), // Uncommon
-        Card(id = 8, drawableRes = R.drawable.cinnamon_pile, rarity = 0.1f, name = "Cinnamon Pile"), // Spell - Common
-        Card(id = 9, drawableRes = R.drawable.my_melody, rarity = 0.07f, name = "My Melody"), // Uncommon
-        Card(id = 10, drawableRes = R.drawable.best_friends_forever, rarity = 0.125f, name = "Best Friends Forever"), // Rare
-        Card(id = 11, drawableRes = R.drawable.shadow, rarity = 0.025f, name = "Shadow"), // Legendary
-        Card(id = 12, drawableRes = R.drawable.maria, rarity = 0.1f, name = "Maria") // Common
+        // Common
+        Card(id = 1, drawableRes = R.drawable.cinnamoroll, rarity = 0.08125f, name = "Cinnamoroll"),
+        Card(id = 2, drawableRes = R.drawable.pompompudding, rarity = 0.08125f, name = "Pompompudding"),
+        Card(id = 3, drawableRes = R.drawable.maria, rarity = 0.08125f, name = "Maria"),
+        Card(id = 4, drawableRes = R.drawable.pochacco, rarity = 0.08125f, name = "Pochacco"),
+        // Trap and Spell - Common
+        Card(id = 5, drawableRes = R.drawable.ichigo_man, rarity = 0.08125f, name = "Ichigo Man to the rescue!"),
+        Card(id = 6, drawableRes = R.drawable.cinnamon_pile, rarity = 0.08125f, name = "Cinnamon Pile"),
+        Card(id = 7, drawableRes = R.drawable.picnic_with_friends, rarity = 0.08125f, name = "Picnic With Friends"),
+        Card(id = 8, drawableRes = R.drawable.snack_time, rarity = 0.08125f, name = "Snack Time"),
+        // Uncommon
+        Card(id = 9, drawableRes = R.drawable.tuxedo_sam, rarity = 0.05f, name = "Tuxedo Sam"),
+        Card(id = 10, drawableRes = R.drawable.keroppi, rarity = 0.05f, name = "Kero Kero Keroppi"),
+        Card(id = 11, drawableRes = R.drawable.pompompurin, rarity = 0.05f, name = "Pompompurin"),
+        Card(id = 12, drawableRes = R.drawable.hello_kitty, rarity = 0.05f, name = "Hello Kitty"),
+        Card(id = 13, drawableRes = R.drawable.my_melody, rarity = 0.05f, name = "My Melody"),
+        // Rare
+        Card(id = 14, drawableRes = R.drawable.best_friends_forever, rarity = 0.02f, name = "Best Friends Forever"),
+        Card(id = 15, drawableRes = R.drawable.chococat, rarity = 0.02f, name = "Chococat"),
+        Card(id = 16, drawableRes = R.drawable.kiki, rarity = 0.02f, name = "Little Twin Stars Kiki"),
+        Card(id = 17, drawableRes = R.drawable.lala, rarity = 0.02f, name = "Little Twin Stars Lala"),
+        // Legendary
+        Card(id = 18, drawableRes = R.drawable.shadow, rarity = 0.01f, name = "Shadow"),
+        Card(id = 19, drawableRes = R.drawable.michail, rarity = 0.01f, name = "Michail")
     )
 
     fun getRandomCard(): Card {
@@ -1190,7 +1207,7 @@ fun ShopPage(
                 }
 
                 newCards.forEach { card ->
-                    if (card.rarity < 0.1) {
+                    if (card.rarity < 0.03) {
                         if (challenge.name == "Collect 5 Rare Cards") {
                             challenge.progress = minOf(challenge.progress + 1, challenge.target)
                             coroutineScope.launch {
@@ -1372,7 +1389,6 @@ fun MinigamePage(
     val coroutineScope = rememberCoroutineScope()
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-
     val paddingTop = 0.dp
     val paddingBottom = 300.dp
 
@@ -1461,9 +1477,9 @@ fun MinigamePage(
                 text = "Return to Shop",
                 style = TextStyle(
                     fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color(0xFFFFF0FB),
-                    fontSize = 18.sp
+                    fontSize = 16.sp
                 )
             )
         }
@@ -1524,20 +1540,26 @@ fun getDrawableResByCardId(cardId: Int): Int {
     return when (cardId) {
         1 -> R.drawable.cinnamoroll
         2 -> R.drawable.pompompudding
-        3 -> R.drawable.ichigo_man
-        4 -> R.drawable.tuxedo_sam
-        5 -> R.drawable.keroppi
-        6 -> R.drawable.pompompurin
-        7 -> R.drawable.hello_kitty
-        8 -> R.drawable.cinnamon_pile
-        9 -> R.drawable.my_melody
-        10 -> R.drawable.best_friends_forever
-        11 -> R.drawable.shadow
-        12 -> R.drawable.maria
+        3 -> R.drawable.maria
+        4 -> R.drawable.pochacco
+        5 -> R.drawable.ichigo_man
+        6 -> R.drawable.cinnamon_pile
+        7 -> R.drawable.picnic_with_friends
+        8 -> R.drawable.snack_time
+        9 -> R.drawable.tuxedo_sam
+        10 -> R.drawable.keroppi
+        11 -> R.drawable.pompompurin
+        12 -> R.drawable.hello_kitty
+        13 -> R.drawable.my_melody
+        14 -> R.drawable.best_friends_forever
+        15 -> R.drawable.chococat
+        16 -> R.drawable.kiki
+        17 -> R.drawable.lala
+        18 -> R.drawable.shadow
+        19 -> R.drawable.michail
         else -> R.drawable.logo
     }
 }
-
 
 @Composable
 fun InfoPage() {
@@ -1581,7 +1603,7 @@ fun InfoPage() {
                     Rarity is determined by the amount of stars.
                     Spell and Trap cards don't have a star value, but are treated like Common cards.
                     
-                    Common cards have either 1, 2 or 3 stars.
+                    Common cards have either 2 or 3 stars.
                     Uncommon cards have 4 or 5 stars.
                     Rare cards have 6 or 7 stars.
                     And Legendary cards have 8 stars.
@@ -1623,10 +1645,10 @@ fun InfoPage() {
                 title = "Card Drop Rates",
                 content = """
                     The odds of getting different types of cards are as follows:
-                    - Common Cards: 50% chance
-                    - Uncommon Cards: 35% chance
-                    - Rare Cards: 12.5% chance
-                    - Legendary Cards: 2.5% chance
+                    - Common Cards: 65% chance
+                    - Uncommon Cards: 25% chance
+                    - Rare Cards: 8% chance
+                    - Legendary Cards: 2% chance
                     
                     These odds apply each time you open a card pack. Good luck on your collection journey!
                 """.trimIndent()
